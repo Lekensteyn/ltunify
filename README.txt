@@ -39,4 +39,46 @@ Usage of USB debugger:
 4. ./read-dev-usbmon /dev/usbmon1
 5. Profit!
 
+
+Pairing tool
+The source is not too beautiful, but crafted quickly together while I learned
+more about the protocol. Set the DEBUG environment variable to get more verbose
+details.
+
+Usage of the pairing tool is pretty straight-forward. Example session:
+
+    $ ./ltunify list
+    /dev/hidraw0: Permission denied
+    Logitech Unifying Receiver device is not accessible.
+    Try running this program as root or enable read/write permissions
+    for /dev/hidraw0
+    $ sudo chgrp $USER /dev/hidraw0 && sudo chmod g+rw /dev/hidraw0 
+    $ ./ltunify list
+    Devices count: 1
+    Connected devices:
+    idx=1   Mouse   M525
+    $ ./ltunify info 1
+    Firmware version: 024.000.00018
+    Bootloader version: BL.000.006
+    
+    Device index 1
+    Mouse
+    Name: M525
+    Wireless Product ID: 4013
+    Serial number: DAFA335E
+    Device was unavailable, version information not available.
+    $ ./ltunify unpair 1
+    Device 0x01 succesfully unpaired
+    $ ./ltunify list
+    Devices count: 0
+    Connected devices:
+    $ ./ltunify pair
+    Please turn your wireless device off and on to start pairing.
+    Found new device, id=0x01 Mouse
+    $ ./ltunify list
+    Devices count: 1
+    Connected devices:
+    idx=1   Mouse   M525
+
+
 ~ Peter Wu <lekensteyn@gmail.com>

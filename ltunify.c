@@ -559,6 +559,7 @@ void perform_pair(int fd, u8 timeout) {
 		fprintf(stderr, "Failed to send pair request\n");
 		return;
 	}
+	puts("Please turn your wireless device off and on to start pairing.");
 	// WARNING: mess ahead. I knew it would become messy before writing it.
 	for (;;) {
 		msg.report_id = SHORT_MESSAGE;
