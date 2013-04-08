@@ -28,6 +28,7 @@
 #include <stdlib.h> /* strtoul */
 #include <stdint.h> /* uint16_t */
 #include <arpa/inet.h> /* ntohs, ntohl */
+#include <glob.h> /* for /dev/hidrawX discovery */
 
 // Set DEBUG envvar to enable printing extra verbose details
 static bool debug_enabled;
@@ -834,7 +835,7 @@ static void install_sighandlers(void) {
 // end signal functions
 
 static void print_usage(const char *program_name) {
-	fprintf(stderr, "Usage: %s /dev/hidrawX cmd [cmd options]\n"
+	fprintf(stderr, "Usage: %s cmd [cmd options]\n"
 "Logitech Unifying tool\n"
 "Copyright (C) 2013 Peter Wu <lekensteyn@gmail.com>\n"
 "\n"
@@ -852,11 +853,11 @@ static void print_usage(const char *program_name) {
 static bool validate_args(int argc, char **argv) {
 	char *cmd;
 
-	if (argc < 3) {
+	if (argc < 2) {
 		return false;
 	}
 
-	cmd = argv[2];
+	cmd = argv[1];
 	if (!strcmp(cmd, "list")) {
 		return true;
 	} else if (!strcmp(cmd, "pair")) {
@@ -864,10 +865,10 @@ static bool validate_args(int argc, char **argv) {
 		return true;
 	} else if (!strcmp(cmd, "unpair") || !strcmp(cmd, "info")) {
 		u8 device_index;
-		if (argc < 4) {
+		if (argc < 3) {
 			return false;
 		}
-		device_index = (u8) strtoul(argv[3], NULL, 0);
+		device_index = (u8) strtoul(argv[2], NULL, 0);
 		if (device_index < 1 || device_index > DEVICES_MAX) {
 			fprintf(stderr, "Device index must be between 1 and 6.\n");
 			return false;
@@ -877,6 +878,53 @@ static bool validate_args(int argc, char **argv) {
 
 	// unrecognized command
 	return false;
+}
+
+#define RECEIVER_NAME "logitech-djreceiver"
+int open_hidraw(void) {
+	int fd = -1;
+	glob_t matches;
+	char *hiddev_name = NULL;
+
+	if (!glob("/sys/class/hidraw/hidraw*/device/driver", 0, NULL, &matches)) {
+		size_t i;
+		char buf[1024];
+		for (i = 0; i < matches.gl_pathc; i++) {
+			ssize_t r;
+			char *name = matches.gl_pathv[i];
+
+			r = readlink(name, buf, sizeof buf);
+			if (r < 0) {
+				perror(name);
+			} else if ((size_t) r >= sizeof RECEIVER_NAME &&
+				!memcmp(buf + r - sizeof RECEIVER_NAME + 1, RECEIVER_NAME, sizeof RECEIVER_NAME - 1)) {
+
+				hiddev_name = name + sizeof "/sys/class/hidraw" - sizeof "/dev";
+				memcpy(hiddev_name, "/dev", sizeof "/dev" - 1);
+				name[strlen(name) - sizeof "/device/driver" + 1] = '\0';
+
+				fd = open(hiddev_name, O_RDWR);
+				if (fd < 0) {
+					perror(hiddev_name);
+				} else {
+					break;
+				}
+			}
+		}
+	}
+
+	if (fd < 0) {
+		if (hiddev_name) {
+			fprintf(stderr, "Logitech Unifying Receiver device is not accessible.\n"
+				"Try running this program as root or enable read/write permissions\n"
+				"for %s\n", hiddev_name);
+		} else {
+			fprintf(stderr, "No Logitech Unifying Receiver device found\n");
+		}
+	}
+	globfree(&matches);
+
+	return fd;
 }
 
 int main(int argc, char **argv) {
@@ -890,11 +938,10 @@ int main(int argc, char **argv) {
 		print_usage(*argv);
 		return 1;
         }
-	cmd = argv[2];
+	cmd = argv[1];
 
-        fd = open(argv[1], O_RDWR);
+	fd = open_hidraw();
         if (fd < 0) {
-                perror(argv[1]);
                 return 1;
         }
 
@@ -922,13 +969,13 @@ int main(int argc, char **argv) {
 
 	if (!strcmp(cmd, "pair")) {
 		u8 timeout = 0;
-		if (argc >= 4) {
-			timeout = (u8) strtoul(argv[3], NULL, 0);
+		if (argc >= 3) {
+			timeout = (u8) strtoul(argv[2], NULL, 0);
 		}
 		perform_pair(fd, timeout);
 	} else if (!strcmp(cmd, "unpair")) {
 		u8 device_index;
-		device_index = (u8) strtoul(argv[3], NULL, 0);
+		device_index = (u8) strtoul(argv[2], NULL, 0);
 		if (!get_all_devices(fd)) {
 			fprintf(stderr, "Unable to request a list of paired devices\n");
 		}
@@ -952,7 +999,7 @@ int main(int argc, char **argv) {
 
 		get_and_print_recv_fw(fd);
 
-		device_index = (u8) strtoul(argv[3], NULL, 0);
+		device_index = (u8) strtoul(argv[2], NULL, 0);
 		gather_device_info(fd, device_index);
 		print_detailed_device(device_index);
 	} else {
