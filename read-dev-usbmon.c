@@ -118,6 +118,8 @@ int main(int argc, char ** argv) {
 					printf("%02X%c", data[i],
 						i + 1 == hdr.len_cap ? '\n' : ' ');
 				}
+			} else if (hdr.len_cap > sizeof (struct report)) {
+				fprintf(stderr, "Discarding too large packet of length %u!\n", hdr.len_cap);
 			} else {
 				struct report *report = (struct report *)&data;
 				if (hdr.len_cap < 3) {
