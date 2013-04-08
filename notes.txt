@@ -1,0 +1,207 @@
+// vim:syntax=c:
+// docs at https://drive.google.com/?tab=mo&pli=1&authuser=0#folders/0BxbRzx7vEV7eWmgwazJ3NUFfQ28 (found at http://code.google.com/p/chromium/issues/detail?id=175572)
+struct dj_report {
+	u8 report_id;
+	u8 device_index;
+	u8 report_type;
+	u8 report_params[DJREPORT_SHORT_LENGTH - 3];
+};
+
+// char magic_sequence[] = {0x10, 0xFF, 0x80, 0xB2, 0x01, 0x00, 0x00};
+
+#define REPORT_TYPE_KEYBOARD			0x01
+#define REPORT_TYPE_MOUSE			0x02
+#define REPORT_TYPE_CONSUMER_CONTROL		0x03
+#define REPORT_TYPE_SYSTEM_CONTROL		0x04
+
+#define REPORT_TYPE_MEDIA_CENTER		0x08
+
+#define REPORT_TYPE_LEDS			0x0E
+
+#define REPORT_TYPE_NOTIF_DEVICE_UNPAIRED	0x40
+#define REPORT_TYPE_NOTIF_DEVICE_PAIRED		0x41
+#define REPORT_TYPE_NOTIF_CONNECTION_STATUS	0x42
+
+#define REPORT_TYPE_NOTIF_ERROR			0x7F
+
+#define REPORT_TYPE_CMD_SWITCH			0x80
+#define REPORT_TYPE_CMD_GET_PAIRED_DEVICES	0x81
+
+	dj_report->report_id = REPORT_ID_DJ_SHORT;
+	dj_report->device_index = 0xFF;
+	dj_report->report_type = REPORT_TYPE_CMD_GET_PAIRED_DEVICES;
+	retval = logi_dj_recv_send_report(djrcv_dev, dj_report);
+
+report_id	= 0x10;
+device_index	= 0xFF;
+report_type	= 0x80; // REPORT_TYPE_CMD_SWITCH
+report_params	= {0xB2, 0x01, 0x00, 0x00};
+// { 0xB2 , Connect Devices, Device Number, Open Lock Timeout }
+// 		= {0xb2, 0x01, 0x50, 0x3c}
+// observation: S b203 0100 perform unpair
+//              S b201 533c when discovery is enabled (with no paired devices)
+//              R b200 0000 when discovery is enabled (no paired devices, waiting; also recvd when unpaired while in Advanced mode)
+//              S b202 5394 when discovery is disabled (both with 1 paired kbd and no paired kbd; explicitly issued when closing pair program)
+// 0:1 1 address
+// 1:3 3 value (0 is returned on succesfully setting register)
+// Related to type 0x4A
+
+// observations + guesses
+// issued after 10 ff CMD_SWITCH b2 .. .. ..
+report_id       = 0x10
+device_index    = 0xFF
+report_type     = 0x4A // receiver status - open for new devices?
+//              R 0100 0000 discovery enabled
+//              R 0001 0000 discovery disabled (issued after timeout)
+//              R 0000 0000 discovery disabled (after CMD_SWITCH b200 0000; succesful pair)
+
+// 00000000 00000000 is sent when device is turned off, "null report"?
+
+// No paired devices, just started program:
+// output   report_id=10   dev_idx=ff RECV   type=83                           parms=b5030000
+//    ep3   report_id=11   dev_idx=ff RECV   type=83                           parms=b503af4f95 ea150609 00000000 00000000
+// No paired devices (same for unpaired kbd off/on), just started program:
+// output   report_id=10   dev_idx=ff RECV   type=83 ?CMD_DEVICE_INFO          parms=b5030000
+//    ep3   report_id=11   dev_idx=ff RECV   type=83 ?CMD_DEVICE_INFO          parms=b503af4f95 ea15060a 00000000 00000000
+// Press "Advanced", unpaired (same for unpaired kbd on/off):
+// output   report_id=10   dev_idx=ff RECV   type=83 ?CMD_DEVICE_INFO          parms=b3000000
+//    ep3   report_id=11   dev_idx=ff RECV   type=83 ?CMD_DEVICE_INFO          parms=b308000000 00000000 00000000 00000000
+
+/*
+report_id=10; dev_id=01 for Sent0+Recv0 and Sent1+Recv1, but ff for Sent1+Recv2
+  Sent0     Recv0
+         00120100*
+0d000000 810d0200*
+07000000 07050000
+
+  Sent1    Recv1   Recv2
+f1010000 f1012201 f1011201
+f1020000 f1020019 f1020019
+f1030000 f1030007 81f10300*
+f1040000 f1040201 f1040214
+
+*) type=8f instead of 81 CMD_GET_PAIRED_DEVICES
+Order = Sent0+Recv0, Sent1+Recv1, Sent1+Recv2 (+ = interleaved)
+*/
+
+
+// Discover? (click Advanced and get a lot of this spam)
+// send: report_id=10   dev_idx=ff   type=83                           parms=b3000000                                   # report yourself guys?
+//
+// recv: report_id=11   dev_idx=ff   type=83                           parms=b3a1000000 00000000 00000000 00000000
+// ep3   report_id=11   dev_idx=ff   type=83                           parms=b32a000000 00000000 00000000 00000000      # byte 2 is channel/encrypt key???
+// ep3   report_id=11   dev_idx=ff   type=83                           parms=b331000000 00000000 00000000 00000000      # No devices turned on
+// ep3   report_id=11   dev_idx=ff   type=83                           parms=b334000000 00000000 00000000 00000000      # Device pair step 1 (after Sent0+Recv0)
+// ep3   report_id=11   dev_idx=ff   type=83                           parms=b336000000 00000000 00000000 00000000      # Device pair step 2 (after Sent1+Recv1)
+// ep3   report_id=11   dev_idx=ff   type=83                           parms=b338000000 00000000 00000000 00000000      # Device just paired (after Sent1+Recv2)
+
+
+// Unpair:
+// send: report_id=10   dev_idx=ff   type=80 CMD_SWITCH                parms=b2030100                                   # R: Unpair device request
+//
+// recv: report_id=03   dev_idx=00   type=00                           parms=0000
+// recv: report_id=10   dev_idx=01   type=40 NOTIF_DEVICE_UNPAIRED     parms=02000000
+// recv: report_id=00   dev_idx=00   type=00                           parms=0000000000
+//
+// recv: report_id=20   dev_idx=01   type=40 NOTIF_DEVICE_UNPAIRED     parms=0000000000 00000000 000000
+//
+// recv: report_id=10   dev_idx=ff   type=80 CMD_SWITCH                parms=b2000000                                   # K: Ready to accept other receiver?
+
+// Prepare switch?
+// send: report_id=10   dev_idx=ff   type=80 CMD_SWITCH                parms=b201533c                                   # R: Looking for devices?
+// recv: 
+// recv: report_id=10   dev_idx=ff   type=4a                           parms=01000000                                   # K: Hi I am a device
+// recv: 
+// recv: report_id=10   dev_idx=ff   type=80 CMD_SWITCH                parms=b2000000                                   # K: I want to pair with you
+// Switch timeout? (+/- 60 seconds)
+// recv: report_id=10   dev_idx=ff   type=4a                           parms=00010000                                   # K: Nevermind, nobody responded
+
+// Turn on kbd while pair program is waiting for recv
+// recv: report_id=10   dev_idx=01   type=41 NOTIF_DEVICE_PAIRED       parms=04611020                                   # L: I just turned myself on
+//
+// send: report_id=10   dev_idx=ff   type=83                           parms=b5400000                                   # R: Hey, wanna join me?
+// recv: report_id=20   dev_idx=01   type=41 NOTIF_DEVICE_PAIRED       parms=0010201a40 00000000 000000
+//
+// recv: report_id=10   dev_idx=ff   type=4a                           parms=00000000
+//
+// recv: report_id=11   dev_idx=ff   type=83                           parms=b540044b38 30300000 00000000 00000000
+//
+// send: report_id=10   dev_idx=ff   type=83                           parms=b5300000
+//
+// recv: report_id=11   dev_idx=ff   type=83                           parms=b530fb841b 861a4000 00070000 00000000
+// b530
+// fb841b 86                    Serial No
+// 1a4000 00070000 00000000     ???
+//
+// recv: report_id=10   dev_idx=01   type=41 NOTIF_DEVICE_PAIRED       parms=04a11020                                   # I am already paired? (0x6_ -> 0xa_, 0110 -> 1010); Also sent when turning on paired kbd
+// type=41 Device Connection
+// 04 0000 0100 - Unifying protocol
+// a1 1010 0001 - DeviceType=Keyboard; Link is encrypted; Link is established; Packet with payload
+// 10 0001 0000 - Wireless PID LSB
+// 20 0010 0000 - Wireless PID MSB
+
+// continued switch.
+// send: report_id=10   dev_idx=01   type=00                           parms=12283f94
+//     : report_id=10   dev_idx=01   type=4b                           parms=01000000
+//
+//     : report_id=10   dev_idx=01   type=8f                           parms=00120100
+//
+// send: report_id=10   dev_idx=01   type=81 CMD_GET_PAIRED_DEVICES    parms=0d000000
+//
+//     : report_id=10   dev_idx=01   type=8f                           parms=810d0200
+//
+// send: report_id=10   dev_idx=01   type=81 CMD_GET_PAIRED_DEVICES    parms=07000000
+//
+//     : report_id=10   dev_idx=01   type=81 CMD_GET_PAIRED_DEVICES    parms=07050000
+//
+// send: report_id=10   dev_idx=01   type=81 CMD_GET_PAIRED_DEVICES    parms=f1010000
+//
+//     : report_id=10   dev_idx=01   type=81 CMD_GET_PAIRED_DEVICES    parms=f1012201
+//
+// send: report_id=10   dev_idx=01   type=81 CMD_GET_PAIRED_DEVICES    parms=f1020000
+//
+//     : report_id=10   dev_idx=01   type=81 CMD_GET_PAIRED_DEVICES    parms=f1020019
+//
+// send: report_id=10   dev_idx=01   type=81 CMD_GET_PAIRED_DEVICES    parms=f1030000
+//
+//     : report_id=10   dev_idx=01   type=81 CMD_GET_PAIRED_DEVICES    parms=f1030007
+//
+// send: report_id=10   dev_idx=01   type=81 CMD_GET_PAIRED_DEVICES    parms=f1040000
+//
+//     : report_id=10   dev_idx=01   type=81 CMD_GET_PAIRED_DEVICES    parms=f1040201
+//
+// send: report_id=10   dev_idx=ff   type=81 CMD_GET_PAIRED_DEVICES    parms=f1010000
+//     : report_id=10   dev_idx=ff   type=81 CMD_GET_PAIRED_DEVICES    parms=f1011201
+//
+// send: report_id=10   dev_idx=ff   type=81 CMD_GET_PAIRED_DEVICES    parms=f1020000
+//     : report_id=10   dev_idx=ff   type=81 CMD_GET_PAIRED_DEVICES    parms=f1020019
+//
+// send: report_id=10   dev_idx=ff   type=81 CMD_GET_PAIRED_DEVICES    parms=f1030000
+//     : 
+//     : report_id=10   dev_idx=ff   type=8f                           parms=81f10300
+//     : 
+// send: report_id=10   dev_idx=ff   type=81 CMD_GET_PAIRED_DEVICES    parms=f1040000
+//     : report_id=10   dev_idx=ff   type=81 CMD_GET_PAIRED_DEVICES    parms=f1040214
+
+
+// http://tequals0.wordpress.com/2011/11/01/reverse-engineering-logitech-unifying-usb-protocol/
+/*
+T:  Bus=05 Lev=01 Prnt=01 Port=01 Cnt=02 Dev#=  3 Spd=12   MxCh= 0
+D:  Ver= 2.00 Cls=00(>ifc ) Sub=00 Prot=00 MxPS= 8 #Cfgs=  1
+P:  Vendor=046d ProdID=c52b Rev=12.01
+S:  Manufacturer=Logitech
+S:  Product=USB Receiver
+C:* #Ifs= 3 Cfg#= 1 Atr=a0 MxPwr= 98mA
+I:* If#= 0 Alt= 0 #EPs= 1 Cls=03(HID  ) Sub=01 Prot=01 Driver=usbhid
+E:  Ad=81(I) Atr=03(Int.) MxPS=   8 Ivl=8ms
+I:* If#= 1 Alt= 0 #EPs= 1 Cls=03(HID  ) Sub=01 Prot=02 Driver=usbhid
+E:  Ad=82(I) Atr=03(Int.) MxPS=   8 Ivl=2ms
+I:* If#= 2 Alt= 0 #EPs= 1 Cls=03(HID  ) Sub=00 Prot=00 Driver=usbhid
+E:  Ad=83(I) Atr=03(Int.) MxPS=  32 Ivl=2ms
+
+b=$'\e[1;32m';e=$'\e[m';sudo cat /sys/kernel/debug/usb/usbmon/5u | sed -ur "s/= (..)(..)(..)(..) (..)(....)(..)/=   report_id=$b\1$e   dev_idx=$b\2$e   type=$b\3$e   parms=$b\4\5 \6 \7$e/"
+
+see lt/usbmon.awk
+awk -vOFS='   ' 'function l(s){return "\033[1;32m" s "\033[m"}{if(match($0,/(.*? = )(..)(..)(..)(..) (.*)/,a)){printf("%-85s",$0);print "report_id=" l(a[2]), "dev_idx=" l(a[3]), "type=" l(a[4]), "parms=" l(a[5] a[6])}else print "\033[1;30m" $0 "\033[m"}'
+
+*/

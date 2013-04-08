@@ -1,0 +1,284 @@
+Overview
+
+USB VID 0x046d
+USB PID 0xc52b
+
+Message Sub ID
+0x80 SET_REGISTER
+0x81 GET_REGISTER
+0x82 SET_LONG_REGISTER
+0x83 GET_LONG_REGISTER
+0x8F ERROR_MSG
+
+Notifications
+0x40 Device Disconnection
+0x41 Device Connection
+0x4A Unifying Receiver Locking Change information
+
+Registers
+0x00 Enable HID++ Notifications
+0x02 Connection State
+0xB2 Device Connection and Disconnection (Pairing)
+0xB3 Device Activity
+0xB5 Pairing Information
+(more undocumented below)
+
+Not documented:
+Long register B5 (Pairing Information) - nn=03 "Receiver information?"
+Send: 10 FF 83 B5  03 00 00 00 - Long (10) message for receiver (FF) to retrieve
+	long register (83) PairingInfo (B5) with special param 03 00 00 00.
+Recv: 11 FF 83 B5  03 AF 4F 95  EA 05 06 0E  00 00 00 00  00 00 00 00
+11 - Long message
+FF - Receiver target
+83 - LONG_REGISTER_RESPONSE
+B5 - Pairing Info
+03 - "Receiver information"?
+AF 4F 95 EA - Serial Number of receiver
+05
+06 - Max Device Capability? (not sure, but it is six)
+0E  00 00 00 00  00 00 00 00
+Remaining information:
+- Wireless Status (0x03)
+- ModelId (0x46d c52b)
+- Handle: 0xff000001 (0xff is device ID, 01 is internal to the software, ordered)
+- Dfu Status (0x1)
+- Is Dfu Cancellable (yes)
+
+Short register F1 - "Version information" (guessed)
+Header: 10 FF 81 (short msg, receiver is target, GET_REGISTER)
+Data: F1 nn xx yy (xx yy is empty for request and contains version for response)
+nn=01 xx,yy=12 01
+nn=02 xx,yy=00 19
+nn=03 error 03 (Invalid address) (but returns 00 07 for keyboard)
+nn=04 xx,yy=02 14
+Displayed firmware version: 012.001.00019 (x1 . y1 . x2 y2)
+Displayed bootloader version: BL.002.014 (BL . x4 . y4)
+
+10 ix 17  3C 00 00 0n
+received when the keyboard illumination level is changed. (n = 1..5)
+10 ix 07  07 00 00 00
+received when battery level is requested using keyboard Fn+F7
+
+More undocumented short regs:
+17 rw Illumination info
+get 00 00 00 - Retrieve illimunation status?
+rsp: 3C 00 02 - (illimunation is disabled)
+set 3C 00 01 - Activate illumination only when I start typing
+set 3C 00 02 - Disable keyboard illumination
+
+01 rw "Keyboard hand detection?"
+get 00 00 00 - retrieve keyboard hand detection status?
+rsp: 00 00 20 - (hand detection is disabled)
+set 00 00 00 - Enable hand detection
+set 00 00 20 - Disable hand detection
+
+09 rw "F key functions"
+get 00 00 00 - Retrieve F key function state
+rsp: 00 00 00 - (F key functions are not swapped)
+set 00 01 00 - Swap F key functions
+set 00 00 00 - Do not swap F key functions
+
+00 rw ENABLED_NOTIFS, 10 02 00, 10 is Battery info, buy what is 02?
+
+07 r Likely the battery status of the kbd, not observed for M525 mouse
+get 00 00 00
+rsp: 07 00 00 - (Battery full?)
+
+17 rw ???
+
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=17   params=00 00 00 
+        report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=17   params=3C 00 01 
+Send    report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=17   params=3C 00 01 
+        report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=17   params=00 00 00 
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=01   params=00 00 00 
+        report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=01   params=00 00 00 
+Send    report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=01   params=00 00 00 
+        report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=01   params=00 00 00 
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=09   params=00 00 00 
+        report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=09   params=00 00 00 
+Send    report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=09   params=00 00 00 
+        report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=09   params=00 00 00 
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=07   params=00 00 00 
+        report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=07   params=07 00 00 
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=00 ENABLED_NOTIFS  params=00 00 00 
+        report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=00 ENABLED_NOTIFS  params=10 02 00 
+Send    report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=00 ENABLED_NOTIFS  params=10 02 00 
+        report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=00 ENABLED_NOTIFS  params=00 00 00 
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=17   params=00 00 00 
+        report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=17   params=3C 00 01 
+Send    report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=17   params=3C 00 01 
+        report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=17   params=00 00 00 
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=01   params=00 00 00 
+        report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=01   params=00 00 00 
+Send    report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=01   params=00 00 00 
+        report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=01   params=00 00 00 
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=09   params=00 00 00 
+        report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=09   params=00 00 00 
+Send    report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=09   params=00 00 00 
+        report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=09   params=00 00 00 
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=07   params=00 00 00 
+        report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=07   params=07 00 00 
+
+Documented in hidpp10:
+Allows for testing protocol version.
+Request: 10 DeviceIndex 00 1n 00 00 uu
+- n is SwId
+- UU is "ping data" defined by SW
+Responses:
+HID++ 1.0: 10 ix  8F  00 Fn 01 00 (ERR_INVALID_SUBID)
+HID++ 2.0: 10 ix 00 1n 02 00 UU
+HID++ X.Y: 10 ix 00 1n XX YY UU
+
+Discovery:
+1. Get Reg 00
+2. Set Reg 00 to value from (1) with bit 0 of the second byte enabled (v1[1] |= 1)
+3. Send read CONNECTION_STATE register for total number of devices
+4. Write CONNECTION_STATE 02 00 00 register
+5. (4) triggers a 0x41 notification (Device Paired notification) for each
+   device. Note, device index does not have to start at 1 (if device got
+   unpaired before).
+5. Got response for (3).
+6. (disable discovery) Get Reg 00
+7. Set Reg 00 to value from (6) with bit 0 of the second byte disabled (v1[1] &= ~1)
+
+Startup (all targeted at receiver, notifications come from device 1..6):
+ 1. Get receiver details from pairing info register (serial number, etc)
+ 2. Get firmware version (recv)
+ 3. Get bootloader version (recv)
+ 4. Get enabled notifications
+ 5. Enable wireless notifications (set enabled notifs reg)
+ 6. Read connection state register for number of machines
+    for each machine from (6):
+    7. Write params to connection state register (02 00 00 was written) (read
+       returns after (8)) (possibly a "trigger report all paired devices")
+    8. (7) immediately triggers a Device Paired notification for a previously paired dev
+    9. Send/Read request for paired device device name
+    10. Send/Read request for paired device extended info (serial, .., location of power switch)
+11. Read fw+bootloader version information again (this seems useless?)
+
+A1. Pairing starts: write DEVICE_PAIRING register, enable pairing with timeout (read returns after (A2))
+A2. (A1) triggers Receiver Lock Changed notification (subid=0x41) (reason: no error)
+A3. On timeout, Receiver Lock Changed notification is received (reason: timeout)
+A4. (close button) On close, DEVICE_PAIRING register is written to disable pairing discovery
+A5. Receiver Lock Changed notification is immediately received (reason: timeout)
+
+Advanced:
+B1. Advanced button is pressed. Polling starts, every x time, DEVICE_ACTIVITY register request is sent/read
+B2. Unpair device, Device Unpaired notification (subid=0x40) received (reason:
+    device disconnected) (note, report id 10 and 20 received, ignore 20)
+
+Send    report_id=10 short device=FF RECV type=83 GET_LONG_REG            reg=B5 PAIRING_INFO  params=03 00 00 
+        report_id=11 long  device=FF RECV type=83 GET_LONG_REG            reg=B5 PAIRING_INFO  params=03 AF 4F 95  EA 05 06 0E  00 00 00 00  00 00 00 00 
+Send    report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=01 00 00 
+        report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=01 12 01 
+Send    report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=02 00 00 
+        report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=02 00 19 
+Send    report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=03 00 00 
+        report_id=10 short device=FF RECV type=8F _ERROR_MSG              SubID=81 GET_REG  reg=F1 VERSION_INFO?  err=03 INVALID_ADDRESS  
+Send    report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=04 00 00 
+        report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=04 02 14 
+Send    report_id=10 short device=FF RECV type=81 GET_REG                 reg=00 ENABLED_NOTIFS  params=00 00 00 
+        report_id=10 short device=FF RECV type=81 GET_REG                 reg=00 ENABLED_NOTIFS  params=00 01 00 
+Send    report_id=10 short device=FF RECV type=80 SET_REG                 reg=00 ENABLED_NOTIFS  params=00 01 00 
+        report_id=10 short device=FF RECV type=80 SET_REG                 reg=00 ENABLED_NOTIFS  params=00 00 00 
+Send    report_id=10 short device=FF RECV type=81 GET_REG                 reg=02 CONNECTION_STATE  params=00 00 00 
+        report_id=10 short device=FF RECV type=81 GET_REG                 reg=02 CONNECTION_STATE  params=00 01 00 
+Send    report_id=10 short device=FF RECV type=80 SET_REG                 reg=02 CONNECTION_STATE  params=02 00 00 
+        report_id=10 short device=01 DEV1 type=41 NOTIF_DEVICE_PAIRED     params=04 61 10 20 
+        report_id=10 short device=FF RECV type=80 SET_REG                 reg=02 CONNECTION_STATE  params=00 00 00 
+Send    report_id=10 short device=FF RECV type=83 GET_LONG_REG            reg=B5 PAIRING_INFO  params=40 00 00 
+        report_id=11 long  device=FF RECV type=83 GET_LONG_REG            reg=B5 PAIRING_INFO  params=40 04 4B 38  30 30 00 00  00 00 00 00  00 00 00 00 
+Send    report_id=10 short device=FF RECV type=83 GET_LONG_REG            reg=B5 PAIRING_INFO  params=30 00 00 
+        report_id=11 long  device=FF RECV type=83 GET_LONG_REG            reg=B5 PAIRING_INFO  params=30 FB 84 1B  86 1A 40 00  00 07 00 00  00 00 00 00 
+Send    report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=01 00 00 
+        report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=01 12 01 
+Send    report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=02 00 00 
+        report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=02 00 19 
+Send    report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=03 00 00 
+        report_id=10 short device=FF RECV type=8F _ERROR_MSG              SubID=81 GET_REG  reg=F1 VERSION_INFO?  err=03 INVALID_ADDRESS  
+Send    report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=04 00 00 
+        report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=04 02 14
+
+No paired devices, start pairing:
+ 1. Enable device pairing (response read returns after (2))
+ 2. Got receiver lock notification (locking open)
+
+ 3. Enable device, got Device Paired notif (kbd, link encrypted, link not established)
+ 4. Send read request for device name (response in (6))
+ (5. got report_id=20 for device paired notif)
+ 5. Got Receiver Lock changed notification (lock closed)
+ 6. Response for device name (sent in (4)), Send/Read request for paired device
+    extended info (serial, .., location of power switch)
+ 7. Got Device Paired notif (kbd, link encrypted, link established, link with payload)
+ 8. (??) Send dev1 [header 10 01 00] 12 28 3F 94
+ 9. Got notification ("Pair accepted"?) [header 10 01 4B] 01 00 00 00
+10. Dev1 request (8) returned error message (err=01 SUCCESS)
+11. Read dev1 register 0D, but it returns an error (err=02 INVALID_SUBID)
+12. Request/read dev1 register 07
+13. Read dev1 firmware, bootloader version
+14. Read recv firmware, bootloader version
+15. Write DEVICE_PAIRING register (close lock)
+16. Got Receiver Lock changed notification (lock closed) (was already closed in (5) though)
+
+Send    report_id=10 short device=FF RECV type=80 SET_REG                 reg=B2 DEVICE_PAIRING  params=01 53 3C 
+        report_id=10 short device=FF RECV type=4A NOTIF_RECV_LOCK_CHANGED params=01 00 00 00 
+        report_id=10 short device=FF RECV type=80 SET_REG                 reg=B2 DEVICE_PAIRING  params=00 00 00 
+
+        report_id=10 short device=01 DEV1 type=41 NOTIF_DEVICE_PAIRED     params=04 61 10 20 
+Send    report_id=10 short device=FF RECV type=83 GET_LONG_REG            reg=B5 PAIRING_INFO  params=40 00 00 
+        report_id=20 unkn  device=01 DEV1 type=41 NOTIF_DEVICE_PAIRED     params=00 10 20 1A  40 00 00 00  00 00 00 00 
+        report_id=10 short device=FF RECV type=4A NOTIF_RECV_LOCK_CHANGED params=00 00 00 00 
+        report_id=11 long  device=FF RECV type=83 GET_LONG_REG            reg=B5 PAIRING_INFO  params=40 04 4B 38  30 30 00 00  00 00 00 00  00 00 00 00 
+Send    report_id=10 short device=FF RECV type=83 GET_LONG_REG            reg=B5 PAIRING_INFO  params=30 00 00 
+        report_id=11 long  device=FF RECV type=83 GET_LONG_REG            reg=B5 PAIRING_INFO  params=30 FB 84 1B  86 1A 40 00  00 07 00 00  00 00 00 00 
+        report_id=10 short device=01 DEV1 type=41 NOTIF_DEVICE_PAIRED     params=04 A1 10 20 
+Send    report_id=10 short device=01 DEV1 type=00                         params=12 28 3F 94 
+        report_id=10 short device=01 DEV1 type=4B ?NOTIF_PAIR_ACCEPTED    params=01 00 00 00 
+        report_id=10 short device=01 DEV1 type=8F _ERROR_MSG              SubID=00   reg=12   err=01 SUCCESS  
+Send    report_id=10 short device=01 DEV1 type=81 GET_REG                 reg=0D   params=00 00 00 
+        report_id=10 short device=01 DEV1 type=8F _ERROR_MSG              SubID=81 GET_REG  reg=0D   err=02 INVALID_SUBID  
+Send    report_id=10 short device=01 DEV1 type=81 GET_REG                 reg=07   params=00 00 00 
+        report_id=10 short device=01 DEV1 type=81 GET_REG                 reg=07   params=07 00 00 
+Send    report_id=10 short device=01 DEV1 type=81 GET_REG                 reg=F1 VERSION_INFO?  params=01 00 00 
+        report_id=10 short device=01 DEV1 type=81 GET_REG                 reg=F1 VERSION_INFO?  params=01 22 01 
+Send    report_id=10 short device=01 DEV1 type=81 GET_REG                 reg=F1 VERSION_INFO?  params=02 00 00 
+        report_id=10 short device=01 DEV1 type=81 GET_REG                 reg=F1 VERSION_INFO?  params=02 00 19 
+Send    report_id=10 short device=01 DEV1 type=81 GET_REG                 reg=F1 VERSION_INFO?  params=03 00 00 
+        report_id=10 short device=01 DEV1 type=81 GET_REG                 reg=F1 VERSION_INFO?  params=03 00 07 
+Send    report_id=10 short device=01 DEV1 type=81 GET_REG                 reg=F1 VERSION_INFO?  params=04 00 00 
+        report_id=10 short device=01 DEV1 type=81 GET_REG                 reg=F1 VERSION_INFO?  params=04 02 01 
+Send    report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=01 00 00 
+        report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=01 12 01 
+Send    report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=02 00 00 
+        report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=02 00 19 
+Send    report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=03 00 00 
+        report_id=10 short device=FF RECV type=8F _ERROR_MSG              SubID=81 GET_REG  reg=F1 VERSION_INFO?  err=03 INVALID_ADDRESS  
+Send    report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=04 00 00 
+        report_id=10 short device=FF RECV type=81 GET_REG                 reg=F1 VERSION_INFO?  params=04 02 14 
+
+Send    report_id=10 short device=FF RECV type=80 SET_REG                 reg=B2 DEVICE_PAIRING  params=02 53 94 
+        report_id=10 short device=FF RECV type=80 SET_REG                 reg=B2 DEVICE_PAIRING  params=00 00 00 
+        report_id=10 short device=FF RECV type=4A NOTIF_RECV_LOCK_CHANGED params=00 00 00 00 
+
+Somewhere in the below stream is the battery condition of the M525 mouse (good).
+Recv    report_id=10 short device=01 DEV1 type=41 NOTIF_DEVICE_PAIRED     params=04 52 13 40 
+Recv    report_id=10 short device=FF RECV type=80 SET_REG                 reg=02 CONNECTION_STATE  params=00 00 00 
+Send    report_id=10 short device=FF RECV type=83 GET_LONG_REG            reg=B5 PAIRING_INFO  params=30 00 00 
+Recv    report_id=11 long  device=FF RECV type=83 GET_LONG_REG            reg=B5 PAIRING_INFO  params=30 DA FA 33  5E 04 00 00  00 01 00 00  00 00 00 00 
+Recv    report_id=10 short device=01 DEV1 type=41 NOTIF_DEVICE_PAIRED     params=04 92 13 40 
+Recv    report_id=20 unkn  device=01 DEV1 type=42 NOTIF_CONNECTION_STATUS params=00 00 00 00  00 00 00 00  00 00 00 00 
+Send    report_id=10 short device=FF RECV type=83 GET_LONG_REG            reg=B5 PAIRING_INFO  params=30 00 00 
+Recv    report_id=11 long  device=01 DEV1 type=05                         params=00 01 01 01  00 00 00 00  00 00 00 00  00 00 00 00  00 
+Recv    report_id=11 long  device=FF RECV type=83 GET_LONG_REG            reg=B5 PAIRING_INFO  params=30 DA FA 33  5E 04 00 00  00 01 00 00  00 00 00 00 
+Send    report_id=10 short device=01 DEV1 type=00                         params=05 00 03 00 
+Recv    report_id=11 long  device=01 DEV1 type=00                         params=05 02 00 00  00 00 00 00  00 00 00 00  00 00 00 00  00 
+Send    report_id=10 short device=01 DEV1 type=02 MOUSE                   params=05 00 00 00 
+Recv    report_id=11 long  device=01 DEV1 type=02 MOUSE                   params=05 01 00 00  00 00 00 00  00 00 00 00  00 00 00 00  00 
+Send    report_id=10 short device=01 DEV1 type=02 MOUSE                   params=15 00 00 00 
+Recv    report_id=11 long  device=01 DEV1 type=02 MOUSE                   params=15 00 52 51  4D 27 02 00  28 00 40 13  00 00 00 00  00 
+Send    report_id=10 short device=01 DEV1 type=04 SYSTEM_CONTROL          params=05 00 00 00 
+Recv    report_id=11 long  device=01 DEV1 type=04 SYSTEM_CONTROL          params=05 5A 05 00  00 00 00 00  00 00 00 00  00 00 00 00  00 
+Send    report_id=10 short device=01 DEV1 type=0B                         params=15 01 00 00 
+Recv    report_id=11 long  device=01 DEV1 type=0B                         params=15 01 04 00  00 00 00 00  00 00 00 00  00 00 00 00  00 
+Recv    report_id=20 unkn  device=01 DEV1 type=02 MOUSE                   params=00 00 00 00  00 FF 00 00  00 00 00 00 
+Recv    report_id=20 unkn  device=01 DEV1 type=02 MOUSE                   params=00 00 00 00  00 FF 00 00  00 00 00 00
