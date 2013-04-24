@@ -35,6 +35,8 @@
 #	define PACKAGE_VERSION "dev"
 #endif
 
+#define ARRAY_SIZE(a) (sizeof (a) / sizeof *(a))
+
 // Set DEBUG envvar to enable printing extra verbose details
 static bool debug_enabled;
 
@@ -232,6 +234,31 @@ const char *device_type_str(u8 type) {
 		return device_type[type];
 	}
 	return "(reserved)";
+}
+
+// returns device type index or -1 if the string is invalid
+int device_type_from_str(const char *str) {
+	unsigned i;
+
+	// skip "Unknown" type
+	for (i = 1; i < ARRAY_SIZE(device_type); i++) {
+		if (device_type[i] && !strcasecmp(device_type[i], str)) {
+			return i;
+		}
+	}
+
+	return -1;
+}
+static void print_device_types(void) {
+	unsigned i;
+
+	// skip "Unknown" type
+	for (i = 1; i < ARRAY_SIZE(device_type); i++) {
+		if (device_type[i]) {
+			fprintf(stderr, " %s", device_type[i]);
+		}
+	}
+	putchar('\n');
 }
 
 static void dump_msg(struct hidpp_message *msg, size_t payload_size, const char *tag) {
@@ -859,8 +886,10 @@ static void print_usage(const char *program_name) {
 "  info idx        - Show more detailled information for a device\n"
 "  receiver-info   - Show information about the receiver\n"
 "In the above lines, \"idx\" refers to the device number shown in the\n"
-" first column of the list command (between 1 and 6).\n"
+" first column of the list command (between 1 and 6). Alternatively, you\n"
+" can use the following names (case-insensitive):\n"
 	, program_name, PACKAGE_VERSION);
+	print_device_types();
 }
 
 // Return number of commands and command arguments, -1 on error. If the program
@@ -914,14 +943,21 @@ static int validate_args(int argc, char **argv, char ***args, char **hidraw_path
 			}
 		}
 	} else if (!strcmp(cmd, "unpair") || !strcmp(cmd, "info")) {
-		u8 device_index;
+		unsigned long device_index;
+		char *end;
 		if (args_count < 1) {
 			fprintf(stderr, "%s requires a device index\n", cmd);
 			return -1;
 		}
-		device_index = (u8) strtoul((*args)[1], NULL, 0);
-		if (device_index < 1 || device_index > DEVICES_MAX) {
-			fprintf(stderr, "Device index must be between 1 and 6.\n");
+		device_index = strtoul((*args)[1], &end, 0);
+		if (end != '\0') {
+			if (device_type_from_str((*args)[1]) == -1) {
+				fprintf(stderr, "Invalid device type. Valid types are:\n");
+				print_device_types();
+				return -1;
+			}
+		} else if (device_index < 1 || device_index > DEVICES_MAX) {
+			fprintf(stderr, "Device index must be a number between 1 and 6.\n");
 			return -1;
 		}
 	} else {
@@ -980,6 +1016,36 @@ int open_hidraw(void) {
 	globfree(&matches);
 
 	return fd;
+}
+
+// returns device index starting at 1 or 0 on failure
+static u8 find_device_index_for_type(int fd, const char *str, bool *fetched_devices) {
+	char *end;
+	u8 device_index;
+
+	device_index = strtoul(str, &end, 0);
+	if (*end == '\0') {
+		return device_index;
+	}
+
+	if (get_all_devices(fd)) {
+		u8 i;
+		int device_type_n;
+
+		device_type_n = device_type_from_str(str);
+		if (fetched_devices) {
+			*fetched_devices = true;
+		}
+
+		for (i = 0; i < DEVICES_MAX; i++) {
+			if (devices[i].device_type == device_type_n) {
+				return i + 1;
+			}
+		}
+	} else {
+		fprintf(stderr, "Unable to request a list of paired devices");
+	}
+	return 0;
 }
 
 int main(int argc, char **argv) {
@@ -1042,12 +1108,17 @@ int main(int argc, char **argv) {
 		}
 		perform_pair(fd, timeout);
 	} else if (!strcmp(cmd, "unpair")) {
+		bool fetched_devices = false;
 		u8 device_index;
-		device_index = (u8) strtoul(args[1], NULL, 0);
-		if (!get_all_devices(fd)) {
+		device_index = find_device_index_for_type(fd, args[1], &fetched_devices);
+		if (!fetched_devices && !get_all_devices(fd)) {
 			fprintf(stderr, "Unable to request a list of paired devices\n");
 		}
-		perform_unpair(fd, device_index);
+		if (device_index) {
+			perform_unpair(fd, device_index);
+		} else {
+			fprintf(stderr, "Device %s not found\n", args[1]);
+		}
 	} else if (!strcmp(cmd, "list")) {
 		u8 device_count;
 		if (get_connected_devices(fd, &device_count)) {
@@ -1065,9 +1136,13 @@ int main(int argc, char **argv) {
 	} else if (!strcmp(cmd, "info")) {
 		u8 device_index;
 
-		device_index = (u8) strtoul(args[1], NULL, 0);
-		gather_device_info(fd, device_index);
-		print_detailed_device(device_index);
+		device_index = find_device_index_for_type(fd, args[1], NULL);
+		if (device_index) {
+			gather_device_info(fd, device_index);
+			print_detailed_device(device_index);
+		} else {
+			fprintf(stderr, "Device %s not found\n", args[1]);
+		}
 	} else if (!strcmp(cmd, "receiver-info")) {
 		get_and_print_recv_fw(fd);
 	} else {
