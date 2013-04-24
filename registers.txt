@@ -25,7 +25,7 @@ Registers
 
 Not documented:
 Long register B5 (Pairing Information) - nn=03 "Receiver information?"
-Send: 10 FF 83 B5  03 00 00 00 - Long (10) message for receiver (FF) to retrieve
+Send: 10 FF 83 B5  03 00 00 00 - Short (10) message for receiver (FF) to retrieve
 	long register (83) PairingInfo (B5) with special param 03 00 00 00.
 Recv: 11 FF 83 B5  03 AF 4F 95  EA 05 06 0E  00 00 00 00  00 00 00 00
 11 - Long message
@@ -83,6 +83,33 @@ set 00 00 00 - Do not swap F key functions
 07 r Likely the battery status of the kbd, not observed for M525 mouse
 get 00 00 00
 rsp: 07 00 00 - (Battery full?)
+rsp: 01 00 00 - (Battery almost empty? Flashing red light on keyboard)
+Undocumented short type=07 for KBD dev: 10 02 07  01 00 00 00; sent when
+pressing the Fn+F7 key for battery information. 01 is presumably the battery
+level (red, danger, etc))
+(on kbd enable, 10 02 07  01 00 00 00 is sent ONLY if notification is enabled
+after NOTIF_DEVICE_PAIRED (0x41) / ?NOTIF_PAIR_ACCEPTED (0x4B); not observed
+when battery is not near dead)
+
+Format: 10 DEVID 07   <battery level> <some magic> 00 00
+(or: response to reading register, 10 DEVID 81 07   07 <batlvl> <magic> 00)
+Battery level:
+00 is not possible for battery level, when the keyboard went off because of zero
+	power, 01 was still the reported value
+01 - red zone
+03 - one bar
+05 - two bars
+07 - three bars
+Some magic:
+00 - after unplugging/when not connected
+25 - after plugging in USB power
+
+Recv    report_id=10 short device=02 DEV2 type=41 NOTIF_DEVICE_PAIRED     params=04 A1 10 20 				# Hello, I am a device!
+Recv    report_id=20 unkn  device=02 DEV2 type=42 NOTIF_CONNECTION_STATUS params=00 00 00 00  00 00 00 00  00 00 00 00	# wtf is this?
+Recv    report_id=10 short device=02 DEV2 type=4B ?NOTIF_PAIR_ACCEPTED    params=01 00 00 00 				# Guessed: pair succeeded?
+Send    report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=00 ENABLED_NOTIFS  params=10 00 00 	# Enable battery status notifs
+Recv    report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=00 ENABLED_NOTIFS  params=00 00 00 	# succesfully set
+Recv    report_id=10 short device=02 DEV2 type=07                         params=01 00 00 00				# battery low notif!
 
 17 rw ???
 
@@ -282,3 +309,8 @@ Send    report_id=10 short device=01 DEV1 type=0B                         params
 Recv    report_id=11 long  device=01 DEV1 type=0B                         params=15 01 04 00  00 00 00 00  00 00 00 00  00 00 00 00  00 
 Recv    report_id=20 unkn  device=01 DEV1 type=02 MOUSE                   params=00 00 00 00  00 FF 00 00  00 00 00 00 
 Recv    report_id=20 unkn  device=01 DEV1 type=02 MOUSE                   params=00 00 00 00  00 FF 00 00  00 00 00 00
+
+Back to alive (very, very red battery for keyboard):
+Recv    report_id=10 short device=02 DEV2 type=41 NOTIF_DEVICE_PAIRED     params=04 A1 10 20
+Recv    report_id=20 unkn  device=02 DEV2 type=42 NOTIF_CONNECTION_STATUS params=00 00 00 00  00 00 00 00  00 00 00 00
+Send    report_id=20 unkn  device=02 DEV2 type=0E LEDS                    params=00 00 00 00  00 00 00 00  00 00 00 00
