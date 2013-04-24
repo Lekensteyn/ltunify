@@ -774,7 +774,6 @@ void get_and_print_recv_fw(int fd) {
 
 	if (get_device_versions(fd, DEVICE_RECEIVER, &version)) {
 		print_versions(&version);
-		putchar('\n');
 	}
 }
 
@@ -858,6 +857,7 @@ static void print_usage(const char *program_name) {
 "                    default 0 which is an alias for 30s)\n"
 "  unpair idx      - Unpair device\n"
 "  info idx        - Show more detailled information for a device\n"
+"  receiver-info   - Show information about the receiver\n"
 "In the above lines, \"idx\" refers to the device number shown in the\n"
 " first column of the list command (between 1 and 6).\n"
 	, program_name, PACKAGE_VERSION);
@@ -901,7 +901,7 @@ static int validate_args(int argc, char **argv, char ***args, char **hidraw_path
 	args_count = argc - optind - 1;
 
 	cmd = (*args)[0];
-	if (!strcmp(cmd, "list")) {
+	if (!strcmp(cmd, "list") || !strcmp(cmd, "receiver-info")) {
 		/* nothing to check */
 	} else if (!strcmp(cmd, "pair")) {
 		if (args_count >= 1) {
@@ -1065,11 +1065,11 @@ int main(int argc, char **argv) {
 	} else if (!strcmp(cmd, "info")) {
 		u8 device_index;
 
-		get_and_print_recv_fw(fd);
-
 		device_index = (u8) strtoul(args[1], NULL, 0);
 		gather_device_info(fd, device_index);
 		print_detailed_device(device_index);
+	} else if (!strcmp(cmd, "receiver-info")) {
+		get_and_print_recv_fw(fd);
 	} else {
 		fprintf(stderr, "Unhandled command: %s\n", cmd);
 		goto end_notifs;
