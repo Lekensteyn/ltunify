@@ -650,13 +650,15 @@ void perform_pair(int fd, u8 timeout) {
 }
 void perform_unpair(int fd, u8 device_index) {
 	struct device *dev = &devices[device_index - 1];
+	u8 dev_device_type = dev->device_type; // will be overwritten, therefore store it
 	if (!dev->device_present) {
 		printf("Device %#04x does not appear to be paired\n", device_index);
 		return;
 	}
 	if (device_unpair(fd, device_index)) {
 		if (!dev->device_present) {
-			printf("Device %#04x succesfully unpaired\n", device_index);
+			printf("Device %#04x %s successfully unpaired\n", device_index,
+				device_type_str(dev_device_type));
 		} else {
 			fprintf(stderr, "Unpairing of %#04x possibly failed\n", device_index);
 		}
