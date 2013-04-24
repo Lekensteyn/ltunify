@@ -1,4 +1,4 @@
-CFLAGS ?= -g -O2 -Wall -Werror -Wextra
+CFLAGS ?= -g -O2 -Wall -Wextra -D_FORTIFY_SOURCE=2 -fstack-protector --param ssp-buffer-size=4
 BINDIR ?= $(HOME)
 
 %: %.c
