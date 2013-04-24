@@ -29,6 +29,11 @@
 #include <stdint.h> /* uint16_t */
 #include <arpa/inet.h> /* ntohs, ntohl */
 #include <glob.h> /* for /dev/hidrawX discovery */
+#include <getopt.h> /* for getopt_long */
+
+#ifndef PACKAGE_VERSION
+#	define PACKAGE_VERSION "dev"
+#endif
 
 // Set DEBUG envvar to enable printing extra verbose details
 static bool debug_enabled;
@@ -839,12 +844,13 @@ static void install_sighandlers(void) {
 
 static void print_usage(const char *program_name) {
 	fprintf(stderr, "Usage: %s [options] cmd [cmd options]\n"
-"Logitech Unifying tool\n"
+"Logitech Unifying tool version %s\n"
 "Copyright (C) 2013 Peter Wu <lekensteyn@gmail.com>\n"
 "\n"
 "Generic options:\n"
-"  -d path          Bypass detection, specify custom hidraw device.\n"
-"  -D               Print debugging information\n"
+"  -d, --device path Bypass detection, specify custom hidraw device.\n"
+"  -D                Print debugging information\n"
+"  -h, --help        Show this help message\n"
 "\n"
 "Commands:\n"
 "  list            - show all paired devices\n"
@@ -854,15 +860,23 @@ static void print_usage(const char *program_name) {
 "  info idx        - Show more detailled information for a device\n"
 "In the above lines, \"idx\" refers to the device number shown in the\n"
 " first column of the list command (between 1 and 6).\n"
-	, program_name);
+	, program_name, PACKAGE_VERSION);
 }
 
-static bool validate_args(int argc, char **argv, char ***args, int *args_count,
-	char **hidraw_path) {
+// Return number of commands and command arguments, -1 on error. If the program
+// should not run (--help), then 0 is returned and args is NULL.
+static int validate_args(int argc, char **argv, char ***args, char **hidraw_path) {
+	int args_count;
 	char *cmd;
 	int opt;
+	struct option longopts[] = {
+		{ "device",     1, NULL, 'd' },
+		{ "help",       0, NULL, 'h' },
+	};
 
-	while ((opt = getopt(argc, argv, "Dd:")) != -1) {
+	*args = NULL;
+
+	while ((opt = getopt_long(argc, argv, "+Dd:h", longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'D':
 			debug_enabled = true;
@@ -870,39 +884,51 @@ static bool validate_args(int argc, char **argv, char ***args, int *args_count,
 		case 'd':
 			*hidraw_path = optarg;
 			break;
+		case 'h':
+			print_usage(*argv);
+			return 0;
 		default:
-			return false;
+			return -1;
 		}
 	}
 
 	if (optind >= argc) {
 		// missing command
-		return false;
+		print_usage(*argv);
+		return -1;
 	}
 	*args = &argv[optind];
-	*args_count = argc - optind - 1;
+	args_count = argc - optind - 1;
 
 	cmd = (*args)[0];
 	if (!strcmp(cmd, "list")) {
-		return true;
+		/* nothing to check */
 	} else if (!strcmp(cmd, "pair")) {
-		// timeout is optional, do not check
-		return true;
+		if (args_count >= 1) {
+			char *end;
+			unsigned long int n;
+			n = strtoul((*args)[1], &end, 0);
+			if (*end != '\0' || n > 0xFF) {
+				fprintf(stderr, "Timeout must be a number between 0 and 255\n");
+				return -1;
+			}
+		}
 	} else if (!strcmp(cmd, "unpair") || !strcmp(cmd, "info")) {
 		u8 device_index;
-		if (*args_count < 1) {
-			return false;
+		if (args_count < 1) {
+			fprintf(stderr, "%s requires a device index\n", cmd);
+			return -1;
 		}
-		device_index = (u8) strtoul((*args)[0], NULL, 0);
+		device_index = (u8) strtoul((*args)[1], NULL, 0);
 		if (device_index < 1 || device_index > DEVICES_MAX) {
 			fprintf(stderr, "Device index must be between 1 and 6.\n");
-			return false;
+			return -1;
 		}
-		return true;
+	} else {
+		fprintf(stderr, "Unrecognized command: %s\n", cmd);
+		return -1;
 	}
-
-	// unrecognized command
-	return false;
+	return args_count;
 }
 
 #define RECEIVER_NAME "logitech-djreceiver"
@@ -960,13 +986,15 @@ int main(int argc, char **argv) {
         int fd;
 	struct msg_enable_notifs notifs;
 	char *cmd, **args;
-	int args_count = 0;
+	int args_count;
 	char *hidraw_path = NULL;
 
-        if (!validate_args(argc, argv, &args, &args_count, &hidraw_path)) {
-		print_usage(*argv);
+	args_count = validate_args(argc, argv, &args, &hidraw_path);
+        if (args_count < 0) {
 		return 1;
-        }
+	} else if (args == NULL) {
+		return 0;
+	}
 	cmd = args[0];
 
 	if (hidraw_path) {
@@ -1039,7 +1067,7 @@ int main(int argc, char **argv) {
 		gather_device_info(fd, device_index);
 		print_detailed_device(device_index);
 	} else {
-		print_usage(*argv);
+		fprintf(stderr, "Unhandled command: %s\n", cmd);
 		goto end_notifs;
 	}
 
