@@ -95,16 +95,18 @@ static const char * error_messages[0xFF] = {
 	[0x0d] = "WRONG_PIN_CODE",
 };
 
+// everything with a '?' is guessed
 static const char * registers[0xFF] = {
 	[0x00] = "ENABLED_NOTIFS",
 	[0x01] = "KBD_HAND_DETECT?",
 	[0x02] = "CONNECTION_STATE",
 	[0x03] = "FN_KEY_SWAP?",
+	[0x07] = "BATTERY?",
 	[0x17] = "ILLUMINATION_INFO?",
 	[0xb2] = "DEVICE_PAIRING",
 	[0xb3] = "DEVICE_ACTIVITY",
 	[0xb5] = "PAIRING_INFO",
-	[0xf1] = "VERSION_INFO?", /* guessed */
+	[0xf1] = "VERSION_INFO?",
 };
 
 const char * report_type_str(u8 type) {
