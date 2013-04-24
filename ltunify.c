@@ -449,7 +449,7 @@ static bool get_register(int fd, u8 device_index, u8 address,
         memset(msg.msg_short.value, 0, sizeof msg.msg_short.value);
 	msg.msg_short.address = address;
 	if (params) {
-		memcpy(&msg.msg_short.value, params, SHORT_MESSAGE_LEN - HEADER_SIZE);
+		memcpy(&msg.msg_short.value, params, sizeof msg.msg_short.value);
 	}
 
         if (!do_write(fd, &msg)) {
