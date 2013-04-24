@@ -988,6 +988,7 @@ int main(int argc, char **argv) {
 	char *cmd, **args;
 	int args_count;
 	char *hidraw_path = NULL;
+	bool disable_notifs = false;
 
 	args_count = validate_args(argc, argv, &args, &hidraw_path);
         if (args_count < 0) {
@@ -1022,13 +1023,16 @@ int main(int argc, char **argv) {
 
 	install_sighandlers();
 
-	notifs.reporting_flags_receiver |= 1;
-	if (set_notifications(fd, DEVICE_RECEIVER, &notifs)) {
-		if (debug_enabled) {
-			puts("Succesfully enabled notifications");
+	if (!notifs.reporting_flags_receiver) {
+		disable_notifs = true;
+		notifs.reporting_flags_receiver |= 1;
+		if (set_notifications(fd, DEVICE_RECEIVER, &notifs)) {
+			if (debug_enabled) {
+				puts("Succesfully enabled notifications");
+			}
+		} else {
+			fprintf(stderr, "Failed to set HID++ Notification status\n");
 		}
-	} else {
-		fprintf(stderr, "Failed to set HID++ Notification status\n");
 	}
 
 	if (!strcmp(cmd, "pair")) {
@@ -1086,13 +1090,15 @@ int main(int argc, char **argv) {
 #endif
 
 end_notifs:
-	notifs.reporting_flags_receiver &= ~1;
-	if (set_notifications(fd, DEVICE_RECEIVER, &notifs)) {
-		if (debug_enabled) {
-			puts("Succesfully disabled notifications");
+	if (disable_notifs) {
+		notifs.reporting_flags_receiver &= ~1;
+		if (set_notifications(fd, DEVICE_RECEIVER, &notifs)) {
+			if (debug_enabled) {
+				puts("Succesfully disabled notifications");
+			}
+		} else {
+			fprintf(stderr, "Failed to set HID++ Notification status\n");
 		}
-	} else {
-		fprintf(stderr, "Failed to set HID++ Notification status\n");
 	}
 
 	if (debug_enabled) {
