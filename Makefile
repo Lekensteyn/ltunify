@@ -6,7 +6,7 @@ BINDIR ?= $(HOME)
 
 all: ltunify read-dev-usbmon
 
-.PHONY: clean install-home
+.PHONY: all clean install-home
 clean:
 	rm -f ltunify read-dev-usbmon hidraw
 
