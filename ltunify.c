@@ -402,12 +402,12 @@ static bool set_register(int fd, u8 device_index, u8 address,
 		msg.report_id = LONG_MESSAGE;
 		exp_sub_id = SUB_SET_LONG_REGISTER;
 		msg.msg_long.address = address;
-		memcpy(&msg.msg_long.str, params, LONG_MESSAGE_LEN - HEADER_SIZE);
+		memcpy(&msg.msg_long.str, params, sizeof msg.msg_long.str);
 	} else {
 		msg.report_id = SHORT_MESSAGE;
 		exp_sub_id = SUB_SET_REGISTER;
 		msg.msg_short.address = address;
-		memcpy(&msg.msg_short.value, params, SHORT_MESSAGE_LEN - HEADER_SIZE);
+		memcpy(&msg.msg_short.value, params, sizeof msg.msg_short.value);
 	}
 	msg.sub_id = exp_sub_id;
 
@@ -716,6 +716,8 @@ bool get_device_version(int fd, u8 device_index, u8 version_type, struct val_reg
 
 bool get_device_versions(int fd, u8 device_index, struct version *version) {
 	struct val_reg_version ver;
+
+	memset(version, 0, sizeof *version);
 
 	if (get_device_version(fd, device_index, VERSION_FIRMWARE, &ver)) {
 		version->fw_major = ver.v1;
