@@ -1,0 +1,13 @@
+# Allows non-root users to have raw access the Logitech Unifying USB Receiver
+# device. For development purposes, allowing users to write to the receiver is
+# potentially dangerous (e.g. perform firmware updates).
+
+# skip actual unified devices, only consider the receiver
+DRIVERS=="logitech-djdevice", GOTO="not_unify_recv"
+
+# Only allow members of the "plugdev" group to access the receiver
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c52b", MODE="0660", GROUP="plugdev"
+# Alternative: Allow every user on the system to access the receiver
+#SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c52b", MODE="0666"
+
+LABEL="not_unify_recv"
