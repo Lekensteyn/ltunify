@@ -838,9 +838,13 @@ static void install_sighandlers(void) {
 // end signal functions
 
 static void print_usage(const char *program_name) {
-	fprintf(stderr, "Usage: %s cmd [cmd options]\n"
+	fprintf(stderr, "Usage: %s [options] cmd [cmd options]\n"
 "Logitech Unifying tool\n"
 "Copyright (C) 2013 Peter Wu <lekensteyn@gmail.com>\n"
+"\n"
+"Generic options:\n"
+"  -d path          Bypass detection, specify custom hidraw device.\n"
+"  -D               Print debugging information\n"
 "\n"
 "Commands:\n"
 "  list            - show all paired devices\n"
@@ -853,14 +857,32 @@ static void print_usage(const char *program_name) {
 	, program_name);
 }
 
-static bool validate_args(int argc, char **argv) {
+static bool validate_args(int argc, char **argv, char ***args, int *args_count,
+	char **hidraw_path) {
 	char *cmd;
+	int opt;
 
-	if (argc < 2) {
-		return false;
+	while ((opt = getopt(argc, argv, "Dd:")) != -1) {
+		switch (opt) {
+		case 'D':
+			debug_enabled = true;
+			break;
+		case 'd':
+			*hidraw_path = optarg;
+			break;
+		default:
+			return false;
+		}
 	}
 
-	cmd = argv[1];
+	if (optind >= argc) {
+		// missing command
+		return false;
+	}
+	*args = &argv[optind];
+	*args_count = argc - optind - 1;
+
+	cmd = (*args)[0];
 	if (!strcmp(cmd, "list")) {
 		return true;
 	} else if (!strcmp(cmd, "pair")) {
@@ -868,10 +890,10 @@ static bool validate_args(int argc, char **argv) {
 		return true;
 	} else if (!strcmp(cmd, "unpair") || !strcmp(cmd, "info")) {
 		u8 device_index;
-		if (argc < 3) {
+		if (*args_count < 1) {
 			return false;
 		}
-		device_index = (u8) strtoul(argv[2], NULL, 0);
+		device_index = (u8) strtoul((*args)[0], NULL, 0);
 		if (device_index < 1 || device_index > DEVICES_MAX) {
 			fprintf(stderr, "Device index must be between 1 and 6.\n");
 			return false;
@@ -937,15 +959,15 @@ int open_hidraw(void) {
 int main(int argc, char **argv) {
         int fd;
 	struct msg_enable_notifs notifs;
-	char *cmd;
+	char *cmd, **args;
+	int args_count = 0;
+	char *hidraw_path = NULL;
 
-	debug_enabled = !!getenv("DEBUG");
-
-        if (!validate_args(argc, argv)) {
+        if (!validate_args(argc, argv, &args, &args_count, &hidraw_path)) {
 		print_usage(*argv);
 		return 1;
         }
-	cmd = argv[1];
+	cmd = args[0];
 
 	fd = open_hidraw();
         if (fd < 0) {
@@ -976,13 +998,13 @@ int main(int argc, char **argv) {
 
 	if (!strcmp(cmd, "pair")) {
 		u8 timeout = 0;
-		if (argc >= 3) {
-			timeout = (u8) strtoul(argv[2], NULL, 0);
+		if (args_count >= 1) {
+			timeout = (u8) strtoul(args[1], NULL, 0);
 		}
 		perform_pair(fd, timeout);
 	} else if (!strcmp(cmd, "unpair")) {
 		u8 device_index;
-		device_index = (u8) strtoul(argv[2], NULL, 0);
+		device_index = (u8) strtoul(args[1], NULL, 0);
 		if (!get_all_devices(fd)) {
 			fprintf(stderr, "Unable to request a list of paired devices\n");
 		}
@@ -1006,7 +1028,7 @@ int main(int argc, char **argv) {
 
 		get_and_print_recv_fw(fd);
 
-		device_index = (u8) strtoul(argv[2], NULL, 0);
+		device_index = (u8) strtoul(args[1], NULL, 0);
 		gather_device_info(fd, device_index);
 		print_detailed_device(device_index);
 	} else {
