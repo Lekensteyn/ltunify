@@ -969,7 +969,14 @@ int main(int argc, char **argv) {
         }
 	cmd = args[0];
 
-	fd = open_hidraw();
+	if (hidraw_path) {
+		fd = open(hidraw_path, O_RDWR);
+		if (fd < 0) {
+			perror(hidraw_path);
+		}
+	} else {
+		fd = open_hidraw();
+	}
         if (fd < 0) {
                 return 1;
         }
