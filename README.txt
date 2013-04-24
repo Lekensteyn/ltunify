@@ -1,21 +1,12 @@
+Logitech Unifying tool for Linux
+
+See also the article on <https://lekensteyn.nl/logitech-unifying.html>
+
 Logitech documents
 
-2200_mousepointer.pdf, 4301_k750_solarkeyboard_lightandbattery.pdf,
-6100_touchpadraw.pdf, 6110_touchmouseraw.pdf,
-logitech_hidpp10_specification_for_Unifying_Receivers.pdf have been created
-from .doc(x) files using LibreOffice.
-logitech_hidpp_2.0_specification_draft_2012-06-04.pdf was already a PDF, so no
-conversion was necessary.
-
-The contents of the aforementioned files are (C) Logitech.
-Retrieved from https://drive.google.com/?tab=mo&pli=1&authuser=0#folders/0BxbRzx7vEV7eWmgwazJ3NUFfQ28
-(found at http://code.google.com/p/chromium/issues/detail?id=175572)
-
-usbmon.awk was a RE attempt before I found the spec, it helped me understand
-the packets when the specification was not available.
-
-You will find the HID++ 1.0 spec the most interesting, I hope to produce a
-pairing program soon.
+I have learned a bit from the kernel source code hid-logitech-dj, but the
+"official" Logitech specification (HID++ 1.0) was much more useful. These
+documents can be found on <https://lekensteyn.nl/files/logitech/>.
 
 
 Debuggers
@@ -40,10 +31,9 @@ Usage of USB debugger:
 5. Profit!
 
 
-Pairing tool
-The source is not too beautiful, but crafted quickly together while I learned
-more about the protocol. Set the DEBUG environment variable to get more verbose
-details.
+Pairing tool (ltunify)
+ltunify allows you to pair new devices, unpair existing devices or view
+information for those devices. Run `ltunify --help` for available options.
 
 Usage of the pairing tool is pretty straight-forward. Example session:
 
@@ -58,9 +48,6 @@ Usage of the pairing tool is pretty straight-forward. Example session:
     Connected devices:
     idx=1   Mouse   M525
     $ ./ltunify info 1
-    Firmware version: 024.000.00018
-    Bootloader version: BL.000.006
-    
     Device index 1
     Mouse
     Name: M525
@@ -68,7 +55,7 @@ Usage of the pairing tool is pretty straight-forward. Example session:
     Serial number: DAFA335E
     Device was unavailable, version information not available.
     $ ./ltunify unpair 1
-    Device 0x01 succesfully unpaired
+    Device 0x01 Mouse successfully unpaired
     $ ./ltunify list
     Devices count: 0
     Connected devices:
