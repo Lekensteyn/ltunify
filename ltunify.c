@@ -952,7 +952,7 @@ static int validate_args(int argc, char **argv, char ***args, char **hidraw_path
 			return -1;
 		}
 		device_index = strtoul((*args)[1], &end, 0);
-		if (end != '\0') {
+		if (*end != '\0') {
 			if (device_type_from_str((*args)[1]) == -1) {
 				fprintf(stderr, "Invalid device type. Valid types are:\n");
 				print_device_types();
