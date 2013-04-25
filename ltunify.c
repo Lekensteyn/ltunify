@@ -876,6 +876,15 @@ static void print_usage(const char *program_name) {
 	print_device_types();
 }
 
+static bool is_numeric_device_index(const char *str) {
+	char *end;
+	unsigned long device_index = strtoul(str, &end, 0);
+
+	// if a number was found, there must be no other characters thereafter
+	return !*end &&
+		device_index >= 1 && device_index <= DEVICES_MAX;
+}
+
 // Return number of commands and command arguments, -1 on error. If the program
 // should not run (--help), then 0 is returned and args is NULL.
 static int validate_args(int argc, char **argv, char ***argsp, char **hidraw_path) {
@@ -928,21 +937,14 @@ static int validate_args(int argc, char **argv, char ***argsp, char **hidraw_pat
 			}
 		}
 	} else if (!strcmp(cmd, "unpair") || !strcmp(cmd, "info")) {
-		unsigned long device_index;
-		char *end;
 		if (args_count < 1) {
 			fprintf(stderr, "%s requires a device index\n", cmd);
 			return -1;
 		}
-		device_index = strtoul(args[1], &end, 0);
-		if (*end != '\0') {
-			if (device_type_from_str(args[1]) == -1) {
-				fprintf(stderr, "Invalid device type. Valid types are:\n");
-				print_device_types();
-				return -1;
-			}
-		} else if (device_index < 1 || device_index > DEVICES_MAX) {
-			fprintf(stderr, "Device index must be a number between 1 and 6.\n");
+		if (!is_numeric_device_index(args[1]) &&
+			device_type_from_str(args[1]) == -1) {
+			fprintf(stderr, "Invalid device type, must be a numeric index or:\n");
+			print_device_types();
 			return -1;
 		}
 	} else {
