@@ -61,6 +61,7 @@ typedef unsigned char u8;
 
 #define REG_ENABLED_NOTIFS      0x00
 #define REG_CONNECTION_STATE    0x02
+#define REG_FKEY_FUNC		0x09 /* undocumented */
 /* Device Connection and Disconnection (Pairing) */
 #define REG_DEVICE_PAIRING      0xB2
 #define REG_DEVICE_ACTIVITY     0xB3
@@ -150,6 +151,14 @@ struct val_reg_devpair {
 	u8 open_lock_timeout; // timeout in seconds, 0 = default (30s)
 };
 
+// Register 0x09 "F Key functions" (undocumented)
+struct val_reg_fkey {
+	u8 _dunno1;
+#define FKEY_SWAP 0x01
+	u8 flags;
+	u8 _dunno2;
+};
+
 // Register 0xF1 Version Info (undocumented)
 struct val_reg_version {
 // v1.v2.xxx
@@ -183,6 +192,7 @@ struct version {
 	u8 bl_minor;
 };
 
+
 #define DEVICES_MAX	6u
 struct device {
 	bool device_present; // whether the device is paired
@@ -213,9 +223,11 @@ static const char * error_messages[0xFF] = {
 	[0x0d] = "WRONG_PIN_CODE",
 };
 
+#define DEVTYPE_KEYBOARD 0x01
+
 static const char * device_type[0x0F] = {
 	[0x00] = "Unknown",
-	[0x01] = "Keyboard",
+	[DEVTYPE_KEYBOARD] = "Keyboard",
 	[0x02] = "Mouse",
 	[0x03] = "Numpad",
 	[0x04] = "Presenter",
@@ -869,6 +881,10 @@ static void print_usage(const char *program_name) {
 "  unpair idx      - Unpair device\n"
 "  info idx        - Show more detailed information for a device\n"
 "  receiver-info   - Show information about the receiver\n"
+"  fkeyswap action [nidx]  - Control the F key state of a keyboard. Valid\n"
+"                    actions are: on off status. nidx is an optional numeric\n"
+"                    device index for a keyboard.\n"
+"\n"
 "In the above lines, \"idx\" refers to the device number shown in the\n"
 " first column of the list command (between 1 and 6). Alternatively, you\n"
 " can use the following names (case-insensitive):\n"
@@ -945,6 +961,19 @@ static int validate_args(int argc, char **argv, char ***argsp, char **hidraw_pat
 			device_type_from_str(args[1]) == -1) {
 			fprintf(stderr, "Invalid device type, must be a numeric index or:\n");
 			print_device_types();
+			return -1;
+		}
+	} else if (!strcmp(cmd, "fkeyswap")) {
+		if (args_count < 1) {
+			fprintf(stderr, "Missing action, must be one of: on off status\n");
+			return -1;
+		}
+		if (strcmp(args[1], "status") && strcmp(args[1], "on") && strcmp(args[1], "off")) {
+			fprintf(stderr, "Invalid action, must be one of: on off status\n");
+			return -1;
+		}
+		if (args_count >= 2 && !is_numeric_device_index(args[2])) {
+			fprintf(stderr, "Device index must be a number (for a keyboard device)\n");
 			return -1;
 		}
 	} else {
@@ -1130,6 +1159,50 @@ int main(int argc, char **argv) {
 		}
 	} else if (!strcmp(cmd, "receiver-info")) {
 		get_and_print_recv_fw(fd);
+	} else if (!strcmp(cmd, "fkeyswap")) {
+		u8 device_index;
+		bool fetched_devices = false;
+		const char *dev_index = "keyboard";
+
+		if (args_count >= 2) {
+			dev_index = args[2];
+		}
+
+		device_index = find_device_index_for_type(fd, dev_index, &fetched_devices);
+		if (device_index && !fetched_devices &&
+			!get_device_pair_info(fd, device_index)) {
+			// device not found - reset
+			device_index = 0;
+		}
+		if (!device_index) {
+			fprintf(stderr, "Device %s not found\n", args[1]);
+		} else if (devices[device_index - 1].device_type != DEVTYPE_KEYBOARD) {
+			fprintf(stderr, "fkeyswap works only for keyboards\n");
+		} else {
+			struct hidpp_message msg;
+			struct val_reg_fkey cval = {0};
+			if (!get_short_register(fd, device_index, REG_FKEY_FUNC, NULL, &msg)) {
+				fprintf(stderr, "Unable to check fkey status\n");
+			} else {
+				memcpy(&cval, msg.msg_short.value, sizeof cval);
+				if (!strcmp(args[1], "status")) {
+					printf("F key functions are %sswapped\n", cval.flags & FKEY_SWAP ? "" : "not ");
+				} else {
+					bool is_swap = !strcmp(args[1], "on");
+					if (is_swap) {
+						cval.flags |= FKEY_SWAP;
+					} else {
+						cval.flags &= ~FKEY_SWAP;
+					}
+					if (set_short_register(fd, device_index, REG_FKEY_FUNC, (u8 *) &cval, &msg)) {
+						printf("F key functions are now %s\n",
+							is_swap ? "swapped" : "normal");
+					} else {
+						fprintf(stderr, "Could not change F key functions\n");
+					}
+				}
+			}
+		}
 	} else {
 		fprintf(stderr, "Unhandled command: %s\n", cmd);
 	}
