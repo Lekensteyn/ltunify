@@ -37,7 +37,7 @@
 
 #define ARRAY_SIZE(a) (sizeof (a) / sizeof *(a))
 
-// Set DEBUG envvar to enable printing extra verbose details
+// pass -D option to print very verbose details like protocol communication
 static bool debug_enabled;
 
 typedef unsigned char u8;
@@ -89,7 +89,7 @@ struct msg_error {
 // 0x00 Enable HID++ Notifications
 struct msg_enable_notifs {
 	u8 reporting_flags_devices; // bit 4 Battery status
-	u8 reporting_flags_receiver; // bit 0 Wireless noitifcations, 3 Software Present
+	u8 reporting_flags_receiver; // bit 0 Wireless notifications, 3 Software Present
 	u8 reporting_flags_receiver2; // (reserved)
 };
 
@@ -338,7 +338,7 @@ bool process_notif_dev_connect(struct hidpp_message *msg, u8 *device_index,
 		return false;
 	}
 	if (msg->report_id != SHORT_MESSAGE) {
-		fprintf(stderr, "Dev conn notif is exoected to be short, got "
+		fprintf(stderr, "Dev conn notif is expected to be short, got "
 			"%#04x instead\n", msg->report_id);
 		return false;
 	}
@@ -737,7 +737,7 @@ bool get_device_version(int fd, u8 device_index, u8 version_type, struct val_reg
 	struct hidpp_message msg;
 	// TODO: not 100% reliable for wireless devices, it may return MSG_ERR
 	// (err=SUCCESS, wtf). Perhaps we need to send another msg type=00
-	// (whatever the undocumened params are).
+	// (whatever the undocumented params are).
 
 	memset(ver, 0, sizeof *ver);
 	ver->select_field = version_type;
@@ -885,7 +885,7 @@ static void print_usage(const char *program_name) {
 "  pair [timeout]  - Try to pair within \"timeout\" seconds (1 to 255,\n"
 "                    default 0 which is an alias for 30s)\n"
 "  unpair idx      - Unpair device\n"
-"  info idx        - Show more detailled information for a device\n"
+"  info idx        - Show more detailed information for a device\n"
 "  receiver-info   - Show information about the receiver\n"
 "In the above lines, \"idx\" refers to the device number shown in the\n"
 " first column of the list command (between 1 and 6). Alternatively, you\n"
@@ -1096,7 +1096,7 @@ int main(int argc, char **argv) {
 		notifs.reporting_flags_receiver |= 1;
 		if (set_notifications(fd, DEVICE_RECEIVER, &notifs)) {
 			if (debug_enabled) {
-				puts("Succesfully enabled notifications");
+				puts("Successfully enabled notifications");
 			}
 		} else {
 			fprintf(stderr, "Failed to set HID++ Notification status\n");
@@ -1171,7 +1171,7 @@ end_notifs:
 		notifs.reporting_flags_receiver &= ~1;
 		if (set_notifications(fd, DEVICE_RECEIVER, &notifs)) {
 			if (debug_enabled) {
-				puts("Succesfully disabled notifications");
+				puts("Successfully disabled notifications");
 			}
 		} else {
 			fprintf(stderr, "Failed to set HID++ Notification status\n");
