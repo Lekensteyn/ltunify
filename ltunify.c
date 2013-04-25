@@ -32,7 +32,7 @@
 #include <getopt.h> /* for getopt_long */
 
 #ifndef PACKAGE_VERSION
-#	define PACKAGE_VERSION "dev"
+#	define PACKAGE_VERSION "0.1"
 #endif
 
 #define ARRAY_SIZE(a) (sizeof (a) / sizeof *(a))
