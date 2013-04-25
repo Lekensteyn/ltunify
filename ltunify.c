@@ -24,7 +24,6 @@
 #include <string.h>
 #include <stdbool.h>
 #include <errno.h>
-#include <signal.h>
 #include <stdlib.h> /* strtoul */
 #include <stdint.h> /* uint16_t */
 #include <arpa/inet.h> /* ntohs, ntohl */
@@ -853,23 +852,6 @@ void print_all_devices(void) {
 	}
 }
 
-// begin signal functions
-static bool stopping;
-static void sig_handler(int signum) {
-	if (signum != SIGINT) {
-		return;
-	}
-	fprintf(stderr, "Caught SIGINT, shutting down\n");
-	stopping = true;
-}
-static void install_sighandlers(void) {
-	struct sigaction sa;
-	memset(&sa, 0, sizeof sa);
-	sa.sa_handler = sig_handler;
-	sigaction(SIGINT, &sa, NULL);
-}
-// end signal functions
-
 static void print_usage(const char *program_name) {
 	fprintf(stderr, "Usage: %s [options] cmd [cmd options]\n"
 "Logitech Unifying tool version %s\n"
@@ -1089,8 +1071,6 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	install_sighandlers();
-
 	if (!notifs.reporting_flags_receiver) {
 		disable_notifs = true;
 		notifs.reporting_flags_receiver |= 1;
@@ -1149,24 +1129,8 @@ int main(int argc, char **argv) {
 		get_and_print_recv_fw(fd);
 	} else {
 		fprintf(stderr, "Unhandled command: %s\n", cmd);
-		goto end_notifs;
 	}
 
-#if 0
-        struct hidpp_message msg;
-        while (!stopping && get_info(fd, &msg)) {
-                u8 *resp = msg.msg_long.str;
-                unsigned i;
-		// activity counter for each device
-                for (i=0; i<DEVICES_MAX; i++) {
-                        printf("%2x%c", resp[i], i == 5 ? '\n' : ' ');
-                }
-                usleep(100000);
-		getchar();
-        }
-#endif
-
-end_notifs:
 	if (disable_notifs) {
 		notifs.reporting_flags_receiver &= ~1;
 		if (set_notifications(fd, DEVICE_RECEIVER, &notifs)) {
