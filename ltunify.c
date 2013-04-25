@@ -878,16 +878,17 @@ static void print_usage(const char *program_name) {
 
 // Return number of commands and command arguments, -1 on error. If the program
 // should not run (--help), then 0 is returned and args is NULL.
-static int validate_args(int argc, char **argv, char ***args, char **hidraw_path) {
+static int validate_args(int argc, char **argv, char ***argsp, char **hidraw_path) {
 	int args_count;
 	char *cmd;
 	int opt;
+	char **args;
 	struct option longopts[] = {
 		{ "device",     1, NULL, 'd' },
 		{ "help",       0, NULL, 'h' },
 	};
 
-	*args = NULL;
+	*argsp = NULL;
 
 	while ((opt = getopt_long(argc, argv, "+Dd:h", longopts, NULL)) != -1) {
 		switch (opt) {
@@ -910,17 +911,17 @@ static int validate_args(int argc, char **argv, char ***args, char **hidraw_path
 		print_usage(*argv);
 		return -1;
 	}
-	*args = &argv[optind];
+	*argsp = args = &argv[optind];
 	args_count = argc - optind - 1;
 
-	cmd = (*args)[0];
+	cmd = args[0];
 	if (!strcmp(cmd, "list") || !strcmp(cmd, "receiver-info")) {
 		/* nothing to check */
 	} else if (!strcmp(cmd, "pair")) {
 		if (args_count >= 1) {
 			char *end;
 			unsigned long int n;
-			n = strtoul((*args)[1], &end, 0);
+			n = strtoul(args[1], &end, 0);
 			if (*end != '\0' || n > 0xFF) {
 				fprintf(stderr, "Timeout must be a number between 0 and 255\n");
 				return -1;
@@ -933,9 +934,9 @@ static int validate_args(int argc, char **argv, char ***args, char **hidraw_path
 			fprintf(stderr, "%s requires a device index\n", cmd);
 			return -1;
 		}
-		device_index = strtoul((*args)[1], &end, 0);
+		device_index = strtoul(args[1], &end, 0);
 		if (*end != '\0') {
-			if (device_type_from_str((*args)[1]) == -1) {
+			if (device_type_from_str(args[1]) == -1) {
 				fprintf(stderr, "Invalid device type. Valid types are:\n");
 				print_device_types();
 				return -1;
