@@ -312,3 +312,39 @@ Back to alive (very, very red battery for keyboard):
 Recv    report_id=10 short device=02 DEV2 type=41 NOTIF_DEVICE_PAIRED     params=04 A1 10 20
 Recv    report_id=20 unkn  device=02 DEV2 type=42 NOTIF_CONNECTION_STATUS params=00 00 00 00  00 00 00 00  00 00 00 00
 Send    report_id=20 unkn  device=02 DEV2 type=0E LEDS                    params=00 00 00 00  00 00 00 00  00 00 00 00
+
+All registers for K800 (HID++ 1.0):
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=00 ENABLED_NOTIFS  params=00 00 00
+Recv    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=00 ENABLED_NOTIFS  params=00 00 00
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=01 KBD_HAND_DETECT?  params=00 00 00
+Recv    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=01 KBD_HAND_DETECT?  params=00 00 00
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=07 BATTERY?  params=00 00 00
+Recv    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=07 BATTERY?  params=03 00 00
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=09 FN_KEY_SWAP?  params=00 00 00
+Recv    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=09 FN_KEY_SWAP?  params=00 00 00
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=17 ILLUMINATION_INFO?  params=00 00 00
+Recv    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=17 ILLUMINATION_INFO?  params=3C 00 01
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=51   params=00 00 00 
+Recv    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=51   params=00 00 00
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=54   params=00 00 00
+Recv    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=54   params=FF 00 00
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=D0   params=00 00 00
+Recv    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=D0   params=00 00 00
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=F1 VERSION_INFO?  params=00 00 00
+Recv    report_id=10 short device=02 DEV2 type=8F _ERROR_MSG              SubID=81 GET_REG  reg=F1 VERSION_INFO?  err=03 INVALID_ADDRESS
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=F2   params=00 00 00
+Recv    report_id=10 short device=02 DEV2 type=8F _ERROR_MSG              SubID=81 GET_REG  reg=F2   err=02 INVALID_SUBID
+Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=F3   params=00 00 00
+Recv    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=F3   params=00 00 00
+Send    report_id=10 short device=02 DEV2 type=83 GET_LONG_REG            reg=0F   params=00 00 00 
+Recv    report_id=11 long  device=02 DEV2 type=83 GET_LONG_REG            reg=0F   params=FF FB 00 00  02 40 02 5C  00 00 00 00  0F F9 00 80
+
+Observations about reading regs:
+- The M525 HID++ 2.0 device does not reply with anything useful to any register
+  request (GET_REG or GET_LONG_REG with 00 params).
+- eading an unknown register on K800 keyboard (HID++ 1.0) yields:
+Recv    report_id=10 short device=02 DEV2 type=8F _ERROR_MSG              SubID=81 GET_REG  reg=FE   err=02 INVALID_SUBID  
+Recv    report_id=10 short device=02 DEV2 type=8F _ERROR_MSG              SubID=83 GET_LONG_REG  reg=FE   err=02 INVALID_SUBID  
+- On a M525 mouse (HID++ 2.0), this shows SUCCESS instead:
+Recv    report_id=10 short device=01 DEV1 type=8F _ERROR_MSG              SubID=81 GET_REG  reg=FE   err=01 SUCCESS  
+Recv    report_id=10 short device=01 DEV1 type=8F _ERROR_MSG              SubID=83 GET_LONG_REG  reg=FE   err=01 SUCCESS  
