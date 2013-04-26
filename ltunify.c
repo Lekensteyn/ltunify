@@ -197,7 +197,7 @@ struct device {
 struct device devices[DEVICES_MAX];
 
 // error messages for type=8F (ERROR_MSG)
-static const char * error_messages[0xFF] = {
+static const char * error_messages[0x100] = {
 	[0x01] = "SUCCESS",
 	[0x02] = "INVALID_SUBID",
 	[0x03] = "INVALID_ADDRESS",
@@ -213,7 +213,7 @@ static const char * error_messages[0xFF] = {
 	[0x0d] = "WRONG_PIN_CODE",
 };
 
-static const char * device_type[0x0F] = {
+static const char * device_type[0x10] = {
 	[0x00] = "Unknown",
 	[0x01] = "Keyboard",
 	[0x02] = "Mouse",

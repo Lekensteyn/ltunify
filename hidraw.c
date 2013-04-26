@@ -50,7 +50,7 @@ struct report {
 	};
 } __attribute__((__packed__));
 
-static const char * report_types[0xFF] = {
+static const char * report_types[0x100] = {
 	// 0x00 - 0x3F HID reports
 	[0x01] = "KEYBOARD",
 	[0x02] = "MOUSE",
@@ -78,7 +78,7 @@ static const char * report_types[0xFF] = {
 	[0x8F] = "_ERROR_MSG",
 };
 
-static const char * error_messages[0xFF] = {
+static const char * error_messages[0x100] = {
 	// error messages for type=8F (ERROR_MSG)
 	[0x01] = "SUCCESS",
 	[0x02] = "INVALID_SUBID",
@@ -96,7 +96,7 @@ static const char * error_messages[0xFF] = {
 };
 
 // everything with a '?' is guessed
-static const char * registers[0xFF] = {
+static const char * registers[0x100] = {
 	[0x00] = "ENABLED_NOTIFS",
 	[0x01] = "KBD_HAND_DETECT?",
 	[0x02] = "CONNECTION_STATE",
