@@ -881,9 +881,9 @@ static void print_usage(const char *program_name) {
 "  unpair idx      - Unpair device\n"
 "  info idx        - Show more detailed information for a device\n"
 "  receiver-info   - Show information about the receiver\n"
-"  fkeyswap [action] [nidx]  - Control the F key state of a keyboard. Valid\n"
-"                    actions are: on off status (defualt). nidx is an\n"
-"                    optional numeric device index for a keyboard.\n"
+"  fkeyswap action [nidx]  - Control the F key state of a keyboard. Valid\n"
+"                    actions are: on off status. nidx is an optional numeric\n"
+"                    device index for a keyboard.\n"
 "\n"
 "In the above lines, \"idx\" refers to the device number shown in the\n"
 " first column of the list command (between 1 and 6). Alternatively, you\n"
@@ -964,7 +964,11 @@ static int validate_args(int argc, char **argv, char ***argsp, char **hidraw_pat
 			return -1;
 		}
 	} else if (!strcmp(cmd, "fkeyswap")) {
-		if (args_count >= 1 && strcmp(args[1], "status") && strcmp(args[1], "on") && strcmp(args[1], "off")) {
+		if (args_count < 1) {
+			fprintf(stderr, "Missing action, must be one of: on off status\n");
+			return -1;
+		}
+		if (strcmp(args[1], "status") && strcmp(args[1], "on") && strcmp(args[1], "off")) {
 			fprintf(stderr, "Invalid action, must be one of: on off status\n");
 			return -1;
 		}
@@ -1181,7 +1185,7 @@ int main(int argc, char **argv) {
 				fprintf(stderr, "Unable to check fkey status\n");
 			} else {
 				memcpy(&cval, msg.msg_short.value, sizeof cval);
-				if (args_count == 0 || !strcmp(args[1], "status")) {
+				if (!strcmp(args[1], "status")) {
 					printf("F key functions are %sswapped\n", cval.flags & FKEY_SWAP ? "" : "not ");
 				} else {
 					bool is_swap = !strcmp(args[1], "on");
