@@ -26,6 +26,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h> /* getenv */
+#include <errno.h>
 
 typedef uint16_t u16;
 typedef int32_t s32;
@@ -104,6 +105,9 @@ int main(int argc, char ** argv) {
 	for (;;) {
 		memset(&data, 0xCC, sizeof data); // for debugging purposes
 		r = ioctl(fd, MON_IOCX_GET, &event);
+		if (r == -1 && errno == EINTR) {
+			continue;
+		}
 		if (r < 0) {
 			perror("ioctl");
 			break;
