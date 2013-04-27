@@ -92,6 +92,15 @@ struct msg_enable_notifs {
 	u8 reporting_flags_receiver2; // (reserved)
 };
 
+// long receiver resp - 0xB5 Pairing information, 0x03 - "Receiver information"? (undocumented)
+struct msg_receiver_info {
+	u8 serial_number[4];
+	u8 _dunno1;
+	u8 _dunno2; // 06 - Max Device Capability? (not sure, but it is six)
+	u8 _dunno3;
+	u8 padding[8]; // 00 00 00 00  00 00 00 00 - ??
+};
+
 // 0xB5 Pairing information, 0x20..0x2F - Unifying Device pairing information
 struct msg_dev_pair_info {
 	u8 requested_field; // 0x20..0x25
@@ -195,6 +204,13 @@ struct device {
 	struct version version;
 };
 struct device devices[DEVICES_MAX];
+
+struct receiver_info {
+	uint32_t serial_number;
+	struct version version;
+};
+
+struct receiver_info receiver;
 
 // error messages for type=8F (ERROR_MSG)
 static const char * error_messages[0x100] = {
@@ -677,6 +693,22 @@ bool get_all_devices(int fd) {
 	}
 	return true;
 }
+bool get_receiver_info(int fd, struct receiver_info *rinfo) {
+	struct hidpp_message msg;
+	u8 params[3] = {0};
+
+	params[0] = 0x03; // undocumented
+	if (get_long_register(fd, DEVICE_RECEIVER, REG_PAIRING_INFO, params, &msg)) {
+		struct msg_receiver_info *info = (struct msg_receiver_info *) &msg.msg_long.str;
+		uint32_t *serial_numberp;
+
+		serial_numberp = (uint32_t *) &info->serial_number;
+
+		rinfo->serial_number = ntohl(*serial_numberp);
+		return true;
+	}
+	return false;
+}
 bool get_device_pair_info(int fd, u8 device_index) {
 	struct device *dev = &devices[device_index - 1];
 	struct hidpp_message msg;
@@ -797,11 +829,12 @@ void print_versions(struct version *ver) {
 			ver->bl_major, ver->bl_minor);
 }
 
-void get_and_print_recv_fw(int fd) {
-	struct version version;
-
-	if (get_device_versions(fd, DEVICE_RECEIVER, &version)) {
-		print_versions(&version);
+void get_and_print_recv_info(int fd) {
+	if (get_receiver_info(fd, &receiver)) {
+		printf("Serial number: %08X\n", receiver.serial_number);
+	}
+	if (get_device_versions(fd, DEVICE_RECEIVER, &receiver.version)) {
+		print_versions(&receiver.version);
 	}
 }
 
@@ -1129,7 +1162,7 @@ int main(int argc, char **argv) {
 			fprintf(stderr, "Device %s not found\n", args[1]);
 		}
 	} else if (!strcmp(cmd, "receiver-info")) {
-		get_and_print_recv_fw(fd);
+		get_and_print_recv_info(fd);
 	} else {
 		fprintf(stderr, "Unhandled command: %s\n", cmd);
 	}
