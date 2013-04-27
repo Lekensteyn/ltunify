@@ -34,9 +34,10 @@ FF - Receiver target
 B5 - Pairing Info
 03 - "Receiver information"?
 AF 4F 95 EA - Serial Number of receiver
-05
+05 - dunno, also seen: 02, 18
 06 - Max Device Capability? (not sure, but it is six)
-0E  00 00 00 00  00 00 00 00
+0E - dunno, also seen: 32, 47
+00 00 00 00  00 00 00 00 - padding?
 Remaining information:
 - Wireless Status (0x03)
 - ModelId (0x46d c52b)
@@ -59,7 +60,7 @@ received when the keyboard illumination level is changed. (n = 1..5)
 10 ix 07  07 00 00 00
 received when battery level is requested using keyboard Fn+F7
 
-More undocumented short regs:
+More undocumented short regs **for K800 keyboard**:
 17 rw Illumination info
 get 00 00 00 - Retrieve illimunation status?
 rsp: 3C 00 02 - (illimunation is disabled)
@@ -79,6 +80,13 @@ set 00 01 00 - Swap F key functions
 set 00 00 00 - Do not swap F key functions
 
 00 rw ENABLED_NOTIFS, 10 02 00, 10 is Battery info, buy what is 02?
+After writing FF FF FF, reading the register shows 13 02 00
+.1 .. .. - If enabled, keys like Web and Mute are passed over the HID protocol
+	with short message type=03. This presumably allows the user to customize
+	key bindings.
+.2 .. .. - ?
+1. .. .. - battery status (documented) (see also below, register/type 07)
+.. .2 .. - ?
 
 07 r Likely the battery status of the kbd, not observed for M525 mouse
 get 00 00 00
@@ -102,7 +110,13 @@ Battery level:
 07 - three bars
 Some magic:
 00 - after unplugging/when not connected
-25 - after plugging in USB power
+22 - fully charged
+25 - charging
+26 - notification when battery is fully charged [10 ix 07] 07 26 00 00
+NOTE: 10 ix 07 notifications are only available when r0bit4 (Battery status) of
+Enable Hid++ Notifications (type=0x00) is enabled. This notification is then
+sent when pressing the Fn+F7 (battery) key or when an event happens (battery
+full).
 
 Recv    report_id=10 short device=02 DEV2 type=41 NOTIF_DEVICE_PAIRED     params=04 A1 10 20 				# Hello, I am a device!
 Recv    report_id=20 unkn  device=02 DEV2 type=42 NOTIF_CONNECTION_STATUS params=00 00 00 00  00 00 00 00  00 00 00 00	# wtf is this?
@@ -145,6 +159,20 @@ Send    report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=09
         report_id=10 short device=02 DEV2 type=80 SET_REG                 reg=09   params=00 00 00 
 Send    report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=07   params=00 00 00 
         report_id=10 short device=02 DEV2 type=81 GET_REG                 reg=07   params=07 00 00 
+
+Enabled HID++ Notifications for receiver
+Serial number: 03AF4F95 (shipped with K800 keyboard)
+Firmware version: 012.001.00019
+Bootloader version: BL.002.014
+Supported notifs: 00 09 00
+
+Serial number: 08D89AA6 (shipped with M525 mouse)
+Firmware version: 024.000.00018
+Bootloader version: BL.000.006
+Supported notifs: 00 19 00
+		     ^--- besides Wireless notifs (r1bit1) and Software present
+(r1bit3) it also supports another flag: r1bit4 (unknown functionality)
+
 
 Documented in hidpp10:
 Allows for testing protocol version.
