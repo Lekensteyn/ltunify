@@ -55,17 +55,14 @@ nn=04 xx,yy=02 14
 Displayed firmware version: 012.001.00019 (x1 . y1 . x2 y2)
 Displayed bootloader version: BL.002.014 (BL . x4 . y4)
 
-10 ix 17  3C 00 00 0n
-received when the keyboard illumination level is changed. (n = 1..5)
-10 ix 07  07 00 00 00
-received when battery level is requested using keyboard Fn+F7
-
 More undocumented short regs **for K800 keyboard**:
 17 rw Illumination info
 get 00 00 00 - Retrieve illimunation status?
 rsp: 3C 00 02 - (illimunation is disabled)
 set 3C 00 01 - Activate illumination only when I start typing
 set 3C 00 02 - Disable keyboard illumination
+Notif [10 ix 17] 3C 00 00 0n received when the keyboard illumination level is
+changed. (n = 1..5; 1=off; 5=full brightness) (NOTE: needs notif flag 00 02 00)
 
 01 rw "Keyboard hand detection?"
 get 00 00 00 - retrieve keyboard hand detection status?
@@ -86,7 +83,7 @@ After writing FF FF FF, reading the register shows 13 02 00
 	key bindings.
 .2 .. .. - ?
 1. .. .. - battery status (documented) (see also below, register/type 07)
-.. .2 .. - ?
+.. .2 .. - backlight changes (pressing Fn+F[56])
 
 07 r Likely the battery status of the kbd, not observed for M525 mouse
 get 00 00 00
