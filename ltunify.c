@@ -29,6 +29,7 @@
 #include <arpa/inet.h> /* ntohs, ntohl */
 #include <glob.h> /* for /dev/hidrawX discovery */
 #include <getopt.h> /* for getopt_long */
+#include <poll.h>
 
 #ifndef PACKAGE_VERSION
 #	define PACKAGE_VERSION "0.1"
@@ -295,7 +296,7 @@ static void dump_msg(struct hidpp_message *msg, size_t payload_size, const char 
 	fflush(NULL);
 }
 
-static ssize_t do_io(int fd, struct hidpp_message *msg, bool is_write) {
+static ssize_t do_io(int fd, struct hidpp_message *msg, bool is_write, int timeout) {
         ssize_t r;
         size_t payload_size = SHORT_MESSAGE_LEN;
 
@@ -307,6 +308,19 @@ static ssize_t do_io(int fd, struct hidpp_message *msg, bool is_write) {
 		dump_msg(msg, payload_size, "wr");
 		r = write(fd, msg, payload_size);
 	} else {
+		struct pollfd pollfd;
+		pollfd.fd = fd;
+		pollfd.events = POLLIN;
+
+		r = poll(&pollfd, 1, timeout);
+		if (r < 0) {
+			perror("poll");
+			return 0;
+		} else if (r == 0) {
+			// timeout
+			return 0;
+		}
+
 		r = read(fd, msg, payload_size);
 		if (r >= 0) {
 			int saved_errno = errno;
@@ -324,11 +338,11 @@ static ssize_t do_io(int fd, struct hidpp_message *msg, bool is_write) {
 	}
 	return 0;
 }
-static ssize_t do_read(int fd, struct hidpp_message *msg) {
-	return do_io(fd, msg, false);
+static ssize_t do_read(int fd, struct hidpp_message *msg, int timeout) {
+	return do_io(fd, msg, false, timeout);
 }
 static ssize_t do_write(int fd, struct hidpp_message *msg) {
-	return do_io(fd, msg, true);
+	return do_io(fd, msg, true, 0);
 }
 
 const char *get_report_id_str(u8 report_type) {
@@ -384,7 +398,7 @@ static bool do_read_skippy(int fd, struct hidpp_message *msg,
 	u8 exp_report_id, u8 exp_sub_id) {
 	for (;;) {
 		msg->report_id = exp_report_id;
-		if (!do_read(fd, msg)) {
+		if (!do_read(fd, msg, 2000)) {
 			return false;
 		}
 		if (msg->report_id == exp_report_id && msg->sub_id == exp_sub_id) {
@@ -602,6 +616,9 @@ bool device_unpair(int fd, u8 device_index) {
 
 void perform_pair(int fd, u8 timeout) {
 	struct hidpp_message msg;
+	if (timeout == 0) {
+		timeout = 30;
+	}
 	if (!pair_start(fd, timeout)) {
 		fprintf(stderr, "Failed to send pair request\n");
 		return;
@@ -610,7 +627,7 @@ void perform_pair(int fd, u8 timeout) {
 	// WARNING: mess ahead. I knew it would become messy before writing it.
 	for (;;) {
 		msg.report_id = SHORT_MESSAGE;
-		if (!do_read(fd, &msg)) {
+		if (!do_read(fd, &msg, timeout * 1000 + 2000)) {
 			fprintf(stderr, "Failed to read short message\n");
 			break;
 		}
