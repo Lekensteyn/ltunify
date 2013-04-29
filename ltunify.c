@@ -185,6 +185,11 @@ struct hidpp_message {
         };
 };
 
+struct hidpp_version {
+	u8 major;
+	u8 minor;
+};
+
 struct version {
 	u8 fw_major;
 	u8 fw_minor;
@@ -202,6 +207,7 @@ struct device {
 	char name[DEVICE_NAME_MAXLEN + 1]; // include NUL byte
 	uint32_t serial_number;
 	u8 power_switch_location;
+	struct hidpp_version hidpp_version;
 	struct version version;
 };
 struct device devices[DEVICES_MAX];
@@ -780,6 +786,61 @@ bool get_device_name(int fd, u8 device_index) {
 	return false;
 }
 
+bool get_hidpp_version(int fd, u8 device_index, struct hidpp_version *version) {
+	struct hidpp_message msg;
+	struct msg_short *payload = &msg.msg_short;
+	u8 softwareId = 0x04; // value 1..15 - random choice for 0x4
+	u8 ping_data = 0x00; // can be any value
+
+	msg.report_id = SHORT_MESSAGE;
+	msg.device_index = device_index;
+	msg.sub_id = 0x00; // Root feature index
+
+	memset(payload->value, 0, sizeof payload->value);
+	payload->address = 0x10 | softwareId;
+	payload->value[2] = ping_data;
+	if (!do_write(fd, &msg)) {
+		return false;
+	}
+	for (;;) {
+		if (!do_read(fd, &msg, 3000)) {
+			if (debug_enabled) {
+				fprintf(stderr, "Failed to read HID++ version, device does not respond!\n");
+			}
+			return false;
+		}
+		if (msg.sub_id == 0x8F) {
+			struct msg_error *error = (struct msg_error *) &msg.msg_error;
+			if (error->sub_id == 0x00 && error->address == (0x10 | softwareId)) {
+				// if error is ERR_INVALID_SUBID (0x01), then HID++ 1.0
+				if (error->error_code == 0x01) {
+					version->major = 1;
+					version->minor = 0;
+					return true;
+				} else if (debug_enabled) {
+					const char *err_str = error_messages[error->error_code];
+					fprintf(stderr, "Failed to retrieve version: %#04x (%s)\n",
+						error->error_code, err_str);
+				}
+				// fatal error - is device connected?
+				return false;
+			}
+			// ignore other errors
+		}
+		if (msg.sub_id == 0x00 && (payload->address & 0xF) == softwareId &&
+			payload->value[2] == ping_data) {
+			break; // I think we got a version
+		} else if (debug_enabled) {
+			fprintf(stderr, "Ignoring sub_id=%02x\n", msg.sub_id);
+		}
+		// ignore other messages
+	}
+
+	version->major = payload->value[0];
+	version->minor = payload->value[1];
+	return true;
+}
+
 // device_index can also be 0xFF for receiver
 bool get_device_version(int fd, u8 device_index, u8 version_type, struct val_reg_version *ver) {
 	struct hidpp_message msg;
@@ -826,6 +887,7 @@ void gather_device_info(int fd, u8 device_index) {
 
 		dev->device_present = true;
 
+		get_hidpp_version(fd, device_index, &dev->hidpp_version);
 		get_device_ext_pair_info(fd, device_index);
 		get_device_name(fd, device_index);
 		if (get_device_versions(fd, device_index, &dev->version)) {
@@ -863,6 +925,11 @@ void print_detailed_device(u8 device_index) {
 		return;
 	}
 
+	if (dev->hidpp_version.major) {
+		printf("HID++ version: %i.%i\n", dev->hidpp_version.major, dev->hidpp_version.minor);
+	} else {
+		puts("HID++ version: unknown");
+	}
 	printf("Device index %i\n", device_index);
 	printf("%s\n", device_type_str(dev->device_type));
 	printf("Name: %s\n", dev->name);
