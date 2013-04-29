@@ -27,6 +27,8 @@
 #include <stdint.h>
 #include <stdlib.h> /* getenv */
 #include <errno.h>
+#include <sys/time.h> /* gettimeofday */
+#include <time.h> /* localtime */
 
 typedef uint16_t u16;
 typedef int32_t s32;
@@ -77,6 +79,20 @@ struct mon_get_arg {
 // written from the usbmon
 #include "hidraw.c"
 #undef NO_MAIN
+
+void print_time(void) {
+	struct timeval tval;
+	struct tm *tm;
+
+	if (gettimeofday(&tval, NULL)) {
+		perror("gettimeofday");
+		return;
+	}
+	tm = localtime(&tval.tv_sec);
+	printf("%02d:%02d:%02d.%03ld ",
+		tm->tm_hour, tm->tm_min, tm->tm_sec,
+		tval.tv_usec / 1000);
+}
 
 int main(int argc, char ** argv) {
 	unsigned char data[1024];
@@ -131,6 +147,7 @@ int main(int argc, char ** argv) {
 					continue;
 				}
 #define COLOR(c, cstr) "\033[" c "m" cstr "\033[m"
+				print_time();
 				if (hdr.type == 'C') {
 					printf(COLOR("1;32", "Recv\t"));
 				} else if (hdr.type == 'S') {
