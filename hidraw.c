@@ -51,6 +51,7 @@ struct report {
 } __attribute__((__packed__));
 
 static const char * report_types[0x100] = {
+	[0x00] = "_HIDPP20", // fake type
 	// 0x00 - 0x3F HID reports
 	[0x01] = "KEYBOARD",
 	[0x02] = "MOUSE",
@@ -76,6 +77,7 @@ static const char * report_types[0x100] = {
 	[0x82] = "SET_LONG_REG",
 	[0x83] = "GET_LONG_REG",
 	[0x8F] = "_ERROR_MSG",
+	[0xFF] = "_HIDPP20_ERROR_MSG",
 };
 
 static const char * error_messages[0x100] = {
@@ -93,6 +95,20 @@ static const char * error_messages[0x100] = {
 	[0x0b] = "REQUEST_UNAVAILABLE",
 	[0x0c] = "INVALID_PARAM_VALUE",
 	[0x0d] = "WRONG_PIN_CODE",
+};
+
+// I don't know the upper bound, perhaps 0x10 is enough
+static const char * error_messages_hidpp20[0x100] = {
+	[0x00] = "NoError",
+	[0x01] = "Unknown",
+	[0x02] = "InvalidArgument",
+	[0x03] = "OutOfRange",
+	[0x04] = "HWError",
+	[0x05] = "Logitech internal",
+	[0x06] = "INVALID_FEATURE_INDEX",
+	[0x07] = "INVALID_FUNCTION_ID",
+	[0x08] = "Busy",
+	[0x09] = "Unsupported",
 };
 
 // everything with a '?' is guessed
@@ -129,6 +145,10 @@ const char *error_str(u8 er) {
 	const char * str = error_messages[er];
 	return str ? str : "";
 }
+const char *error_str_hidpp20(u8 er) {
+	const char * str = error_messages_hidpp20[er];
+	return str ? str : "";
+}
 const char *register_str(u8 reg) {
 	const char * str = registers[reg];
 	return str ? str : "";
@@ -138,7 +158,25 @@ void process_msg_payload(struct report *r, u8 data_len) {
 	u8 pos, i;
 	u8 * bytes = (u8 *) &r->s;
 
+	pos = 0; // nothing has been processed
+
 	switch (r->sub_id) {
+	case 0x00: // assume HID++ 2.0 request/response for feature IRoot
+		if (data_len == 4 || data_len == 17) {
+			printf("func=%X  ", bytes[0] >> 4);
+			printf("swId=%X  ", bytes[0] & 0xF);
+			pos = 1;
+		}
+		break;
+	case 0xFF: // assume HID++ 2.0 error
+		if (data_len == 17) {
+			printf("feat=%X  ", bytes[0]);
+			printf("func=%X  ", bytes[1] >> 4);
+			printf("swId=%X  ", bytes[1] & 0xF);
+			printf("err=%02X %s  ", bytes[2], error_str_hidpp20(bytes[2]));
+			pos = 3;
+		}
+		break;
 	case 0x8F: // error
 		// TODO: length check
 		printf("SubID=%02X %s  ", bytes[0], report_type_str(bytes[0]));
@@ -152,9 +190,6 @@ void process_msg_payload(struct report *r, u8 data_len) {
 	case 0x83: /* long */
 		printf("reg=%02X %s  ", bytes[0], register_str(bytes[0]));
 		pos = 1;
-		break;
-	default:
-		pos = 0; // nothing has been processed
 		break;
 	}
 
