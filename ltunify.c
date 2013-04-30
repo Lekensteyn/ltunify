@@ -410,6 +410,14 @@ static bool do_read_skippy(int fd, struct hidpp_message *msg,
 		if (msg->report_id == exp_report_id && msg->sub_id == exp_sub_id) {
 			return true;
 		}
+		// guess: 0xFF is error message in HID++ 2.0?
+		if (msg->report_id == LONG_MESSAGE && msg->sub_id == 0xFF) {
+			if (debug_enabled) {
+				fprintf(stderr, "HID++ 2.0 error %#04x\n",
+					msg->msg_long.str[2]);
+			}
+			return false;
+		}
 		if (msg->report_id == SHORT_MESSAGE && msg->sub_id == SUB_ERROR_MSG
 			&& msg->msg_error.sub_id == exp_sub_id) {
 			struct msg_error *error = &msg->msg_error;
@@ -458,6 +466,9 @@ static bool do_read_skippy(int fd, struct hidpp_message *msg,
 	}
 	return true;
 }
+
+// TODO: separate files
+#include "hidpp20.c"
 
 static bool set_register(int fd, u8 device_index, u8 address,
 	u8 *params, struct hidpp_message *res, bool is_long_req) {
@@ -890,8 +901,12 @@ void gather_device_info(int fd, u8 device_index) {
 		get_hidpp_version(fd, device_index, &dev->hidpp_version);
 		get_device_ext_pair_info(fd, device_index);
 		get_device_name(fd, device_index);
-		if (get_device_versions(fd, device_index, &dev->version)) {
-			dev->device_available = true;
+		if (dev->hidpp_version.major == 0 && dev->hidpp_version.minor == 0) {
+			if (get_device_versions(fd, device_index, &dev->version)) {
+				dev->device_available = true;
+			}
+		} else {
+			// TODO: hid++20 support
 		}
 	} else {
 		// retrieve some information from notifier
@@ -1240,8 +1255,13 @@ int main(int argc, char **argv) {
 
 		device_index = find_device_index_for_type(fd, args[1], NULL);
 		if (device_index) {
+			struct device *dev = &devices[device_index - 1];
 			gather_device_info(fd, device_index);
 			print_detailed_device(device_index);
+			if (dev->hidpp_version.major == 2 && dev->hidpp_version.minor == 0) {
+				// TODO: separate fetch/print
+				hidpp20_print_features(fd, device_index);
+			}
 		} else {
 			fprintf(stderr, "Device %s not found\n", args[1]);
 		}

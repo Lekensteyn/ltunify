@@ -67,5 +67,9 @@ Usage of the pairing tool is pretty straight-forward. Example session:
     Connected devices:
     idx=1   Mouse   M525
 
+TODO
+- organize code in multiple files
+- simplify code
+- HID++ 2.0 debugging (transparent if possible)
 
 ~ Peter Wu <lekensteyn@gmail.com>

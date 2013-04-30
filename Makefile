@@ -8,6 +8,8 @@ all: ltunify read-dev-usbmon
 
 read-dev-usbmon: read-dev-usbmon.c hidraw.c
 
+ltunify: ltunify.c hidpp20.c
+
 .PHONY: all clean install-home
 clean:
 	rm -f ltunify read-dev-usbmon hidraw
