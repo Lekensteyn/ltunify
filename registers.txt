@@ -88,6 +88,7 @@ After writing FF FF FF, reading the register shows 13 02 00
 params=01 00 00 00
 1. .. .. - battery status (documented) (see also below, register/type 07)
 .. .2 .. - backlight changes (pressing Fn+F[56])
+(more details about bits 0 and 1 of flag 1 in keyboard.txt)
 
 07 r Likely the battery status of the kbd, not observed for M525 mouse
 get 00 00 00
