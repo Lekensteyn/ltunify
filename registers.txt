@@ -81,7 +81,11 @@ After writing FF FF FF, reading the register shows 13 02 00
 .1 .. .. - If enabled, keys like Web and Mute are passed over the HID protocol
 	with short message type=03. This presumably allows the user to customize
 	key bindings.
-.2 .. .. - ?
+.2 .. .. - If enabled, Fn+F8 (Sleep button) generates a HID++ short message
+	instead of a key event that is captured by the Linux input layer
+	(10 ix 04  0s 00 00 00 where s=1 when pressed and s=0 when released).
+10:53:54.914 Recv       report_id=10 short device=01 DEV1 type=04 SYSTEM_CONTROL
+params=01 00 00 00
 1. .. .. - battery status (documented) (see also below, register/type 07)
 .. .2 .. - backlight changes (pressing Fn+F[56])
 
