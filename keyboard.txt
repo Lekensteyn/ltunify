@@ -62,13 +62,20 @@ struct system_control_data {
 	char button : 2; /* two right-most bits, Big Endian */
 };
 
+The 20 ix yy dd.. ... messages below are described as follows:
+- 20: Report ID for Logitech Vendor DJ collection (messages are not processed by
+  the hid-logitech-dj driver but are passed through to the HID layer.)
+- yy: descriptor type (system control, consumer control, keyboard, etc.)
+- dd..: data, length is dependent on descriptor type.
+- Remaining bytes is garbage/padding and can be ignored (confirmed by Nestor
+  from Logitech).
 
 
 The following describes what events are generated when a certain flag is toggled
 	in the notification register 00.
 flag 1, bit 1 - controls "System Control" events?
 Format:
-	(disabled bit) 20 ix 04  XX ... (other 11 bytes seems to be noise)
+	(disabled bit) 20 ix 04  XX ... (other 11 bytes is padding)
 	(enabled  bit) 10 ix 04  XX 00 00 00
 Values for XX:
 - 01: Sleep Button (Fn + F8)
@@ -76,7 +83,7 @@ Values for XX:
 
 flag 1, bit 0 - controls "Consumer Control" events?
 Format:
-	(disabled bit) 20 ix 03  XX xx YY yy ... (other 8 bytes seems to be noise)
+	(disabled bit) 20 ix 03  XX xx YY yy ... (other 8 bytes is padding)
 	(enabled  bit) 10 ix 03  XX xx YY yy
 XX xx and YY yy are two buttons that are pressed according to the keyboard (see
 also struct consumer_control_data above).
