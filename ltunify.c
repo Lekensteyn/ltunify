@@ -30,6 +30,7 @@
 #include <glob.h> /* for /dev/hidrawX discovery */
 #include <getopt.h> /* for getopt_long */
 #include <poll.h>
+#include <libgen.h> /* for basename, used during discovery */
 
 #ifndef PACKAGE_VERSION
 #	define PACKAGE_VERSION "0.1"
@@ -1098,23 +1099,32 @@ int open_hidraw(void) {
 		for (i = 0; i < matches.gl_pathc; i++) {
 			ssize_t r;
 			char *name = matches.gl_pathv[i];
+			const char *last_comp;
 
-			r = readlink(name, buf, sizeof buf);
+			r = readlink(name, buf, (sizeof buf) - 1);
 			if (r < 0) {
 				perror(name);
-			} else if ((size_t) r >= sizeof RECEIVER_NAME &&
-				!memcmp(buf + r - sizeof RECEIVER_NAME + 1, RECEIVER_NAME, sizeof RECEIVER_NAME - 1)) {
+				continue;
+			}
 
-				hiddev_name = name + sizeof "/sys/class/hidraw" - sizeof "/dev";
-				memcpy(hiddev_name, "/dev", sizeof "/dev" - 1);
-				name[strlen(name) - sizeof "/device/driver" + 1] = '\0';
+			buf[r] = 0; /* readlink does not NUL-terminate */
+			last_comp = basename(buf);
 
-				fd = open(hiddev_name, O_RDWR);
-				if (fd < 0) {
-					perror(hiddev_name);
-				} else {
-					break;
-				}
+			if (!strcmp(last_comp, RECEIVER_NAME)) {
+				/* Logitech receiver c52b and c532 - pass */
+			} else { /* unknown driver */
+				continue;
+			}
+
+			hiddev_name = name + sizeof "/sys/class/hidraw" - sizeof "/dev";
+			memcpy(hiddev_name, "/dev", sizeof "/dev" - 1);
+			name[strlen(name) - sizeof "/device/driver" + 1] = '\0';
+
+			fd = open(hiddev_name, O_RDWR);
+			if (fd < 0) {
+				perror(hiddev_name);
+			} else {
+				break;
 			}
 		}
 	}
