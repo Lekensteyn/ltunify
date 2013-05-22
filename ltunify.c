@@ -1091,7 +1091,7 @@ static int validate_args(int argc, char **argv, char ***argsp, char **hidraw_pat
 int open_hidraw(void) {
 	int fd = -1;
 	glob_t matches;
-	char *hiddev_name = NULL;
+	char hiddev_name[32] = {0};
 
 	if (!glob("/sys/class/hidraw/hidraw*/device/driver", 0, NULL, &matches)) {
 		size_t i;
@@ -1100,6 +1100,7 @@ int open_hidraw(void) {
 			ssize_t r;
 			char *name = matches.gl_pathv[i];
 			const char *last_comp;
+			char *dev_name;
 
 			r = readlink(name, buf, (sizeof buf) - 1);
 			if (r < 0) {
@@ -1110,16 +1111,17 @@ int open_hidraw(void) {
 			buf[r] = 0; /* readlink does not NUL-terminate */
 			last_comp = basename(buf);
 
+			/* retrieve 'hidrawX' name */
+			dev_name = name + sizeof "/sys/class/hidraw";
+			*(strchr(dev_name, '/')) = 0;
+
 			if (!strcmp(last_comp, RECEIVER_NAME)) {
 				/* Logitech receiver c52b and c532 - pass */
 			} else { /* unknown driver */
 				continue;
 			}
 
-			hiddev_name = name + sizeof "/sys/class/hidraw" - sizeof "/dev";
-			memcpy(hiddev_name, "/dev", sizeof "/dev" - 1);
-			name[strlen(name) - sizeof "/device/driver" + 1] = '\0';
-
+			snprintf(hiddev_name, sizeof hiddev_name, "/dev/%s", dev_name);
 			fd = open(hiddev_name, O_RDWR);
 			if (fd < 0) {
 				perror(hiddev_name);
@@ -1130,7 +1132,7 @@ int open_hidraw(void) {
 	}
 
 	if (fd < 0) {
-		if (hiddev_name) {
+		if (*hiddev_name) {
 			fprintf(stderr, "Logitech Unifying Receiver device is not accessible.\n"
 				"Try running this program as root or enable read/write permissions\n"
 				"for %s\n", hiddev_name);
