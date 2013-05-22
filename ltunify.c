@@ -43,6 +43,9 @@ static bool debug_enabled;
 
 typedef unsigned char u8;
 
+#define VID_LOGITECH		0x046d
+#define PID_NANO_RECEIVER	0xc52f
+
 #define HEADER_SIZE		3
 #define SHORT_MESSAGE           0x10
 #define SHORT_MESSAGE_LEN       7
@@ -1117,6 +1120,25 @@ int open_hidraw(void) {
 
 			if (!strcmp(last_comp, RECEIVER_NAME)) {
 				/* Logitech receiver c52b and c532 - pass */
+			} else if (!strcmp(last_comp, "hid-generic")) {
+				/* need to test for older nano receiver c52f */
+				FILE *fp;
+				uint32_t vid = 0, pid = 0;
+
+				// Assume that the first match is the receiver. Devices bound to the
+				// same receiver may have the same modalias.
+				snprintf(buf, sizeof buf, "/sys/class/hidraw/%s/device/modalias", dev_name);
+				if ((fp = fopen(buf, "r"))) {
+					int m = fscanf(fp, "hid:b%*04Xg%*04Xv%08Xp%08X", &vid, &pid);
+					if (m != 2) {
+						pid = 0;
+					}
+					fclose(fp);
+				}
+
+				if (vid != VID_LOGITECH || pid != PID_NANO_RECEIVER) {
+					continue;
+				}
 			} else { /* unknown driver */
 				continue;
 			}
