@@ -99,8 +99,8 @@ struct msg_enable_notifs {
 
 // long receiver resp - 0xB5 Pairing information, 0x03 - "Receiver information"? (undocumented)
 struct msg_receiver_info {
+	u8 _dunno1; // always 0x03 for receiver?
 	u8 serial_number[4];
-	u8 _dunno1;
 	u8 _dunno2; // 06 - Max Device Capability? (not sure, but it is six)
 	u8 _dunno3;
 	u8 padding[8]; // 00 00 00 00  00 00 00 00 - ??
