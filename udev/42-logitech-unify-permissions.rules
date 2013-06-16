@@ -5,15 +5,23 @@
 # skip actual unified devices, only consider the receiver
 DRIVERS=="logitech-djdevice", GOTO="not_unify_recv"
 
+# official Unifying receivers
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c52b", GOTO="unify_dev"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c532", GOTO="unify_dev"
+
+# "Unifying Ready" Nano receiver
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c52f", GOTO="unify_dev"
+
+GOTO="not_unify_recv"
+
+LABEL="unify_dev"
 # Allow any seated user to access the receiver.
 # uaccess: modern ACL-enabled udev
 # udev-acl: for Ubuntu 12.10 and older
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c52b", TAG+="uaccess", TAG+="udev-acl"
+TAG+="uaccess", TAG+="udev-acl"
 
 # Grant members of the "plugdev" group access to receiver (useful for SSH users)
-#SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c52b", MODE="0660", GROUP="plugdev"
-
-# Alternative: Allow every user on the system to access the receiver
-#SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c52b", MODE="0666"
+#MODE="0660", GROUP="plugdev"
 
 LABEL="not_unify_recv"
+# vim: ft=udevrules
