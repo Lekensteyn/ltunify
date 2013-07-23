@@ -45,6 +45,16 @@ Remaining information:
 - Dfu Status (0x1)
 - Is Dfu Cancellable (yes)
 
+DFU = Device Firmware Upgrade
+0x00 - Up-to-date
+0x01 - Unknown
+0x02 - Available
+0x03 - Initiated
+0x04 - Failed
+0x05 - Succeeded
+0x06 - Newer software needed
+0x06 - Unrecoverable
+
 Short register F1 - "Version information" (guessed)
 Header: 10 FF 81 (short msg, receiver is target, GET_REGISTER)
 Data: F1 nn xx yy (xx yy is empty for request and contains version for response)
