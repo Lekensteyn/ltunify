@@ -33,7 +33,7 @@
 #include <libgen.h> /* for basename, used during discovery */
 
 #ifndef PACKAGE_VERSION
-#	define PACKAGE_VERSION "0.1"
+#	define PACKAGE_VERSION "0.2"
 #endif
 
 #define ARRAY_SIZE(a) (sizeof (a) / sizeof *(a))
