@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <string.h>
 
-typedef unsigned char u8;
-
 #define SHORT_MESSAGE           0x10
 #define LONG_MESSAGE            0x11
 
