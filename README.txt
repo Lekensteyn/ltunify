@@ -33,7 +33,19 @@ Usage of USB debugger:
 
 Pairing tool (ltunify)
 ltunify allows you to pair new devices, unpair existing devices or view
-information for those devices. Run `ltunify --help` for available options.
+information for those devices. In order to build the ltunify binary and install
+it to `$HOME/bin/ltunify`:
+
+    make ltunify
+    make install-home
+
+If you intend to package ltunify or otherwise install it system-wide with a
+udevrule, you can use:
+
+    make ltunify
+    make install DESTDIR=$pkgdir bindir=/usr/bin udevrulesdir=/lib/udev/rules.d
+
+Once installed, run `ltunify --help` for available options.
 
 Usage of the pairing tool is pretty straight-forward. Example session:
 
