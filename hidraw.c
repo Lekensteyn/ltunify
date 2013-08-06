@@ -82,19 +82,19 @@ static const char * report_types[0x100] = {
 
 static const char * error_messages[0x100] = {
 	// error messages for type=8F (ERROR_MSG)
-	[0x01] = "SUCCESS",
-	[0x02] = "INVALID_SUBID",
-	[0x03] = "INVALID_ADDRESS",
-	[0x04] = "INVALID_VALUE",
-	[0x05] = "CONNECT_FAIL",
-	[0x06] = "TOO_MANY_DEVICES",
-	[0x07] = "ALREADY_EXISTS",
-	[0x08] = "BUSY",
-	[0x09] = "UNKNOWN_DEVICE",
-	[0x0a] = "RESOURCE_ERROR",
-	[0x0b] = "REQUEST_UNAVAILABLE",
-	[0x0c] = "INVALID_PARAM_VALUE",
-	[0x0d] = "WRONG_PIN_CODE",
+	[0x00] = "SUCCESS",
+	[0x01] = "INVALID_SUBID",
+	[0x02] = "INVALID_ADDRESS",
+	[0x03] = "INVALID_VALUE",
+	[0x04] = "CONNECT_FAIL",
+	[0x05] = "TOO_MANY_DEVICES",
+	[0x06] = "ALREADY_EXISTS",
+	[0x07] = "BUSY",
+	[0x08] = "UNKNOWN_DEVICE",
+	[0x09] = "RESOURCE_ERROR",
+	[0x0A] = "REQUEST_UNAVAILABLE",
+	[0x0B] = "INVALID_PARAM_VALUE",
+	[0x0C] = "WRONG_PIN_CODE",
 };
 
 // I don't know the upper bound, perhaps 0x10 is enough
