@@ -1,0 +1,28 @@
+#!/bin/sh
+# helper for allowing the developer to read usbmon as non-root.
+
+if [ "$USER" = "root" ]; then
+	echo "Please run as regular user or set USER"
+	exit 1
+fi
+
+if [ ! -e /dev/usbmon0 ]; then
+	echo "Attempting to modprobe usbmon..."
+	sudo modprobe -v usbmon
+	if [ ! -e /dev/usbmon0 ]; then
+		echo "Cannot locate 'usbmon' kernel module"
+		exit 1
+	fi
+fi
+
+usbmons=$(lsusb -d046d: | cut -c7 | sed 's,^,/dev/usbmon,')
+
+echo Found devices: $usbmons
+
+if [ -n "$usbmons" ]; then
+	echo "Attempting to change permissions..."
+	sudo chgrp -v $USER $usbmons
+	sudo chmod -v g+rw $usbmons
+else
+	echo "No devices found"
+fi
