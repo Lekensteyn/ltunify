@@ -18,9 +18,10 @@ struct hidpp2_message {
 
 struct feature {
 	uint16_t featureId;
-#define FEAT_TYPE_MASK          0xc0
+#define FEAT_TYPE_MASK          0xe0
 #define FEAT_TYPE_OBSOLETE      0x80
 #define FEAT_TYPE_SWHIDDEN      0x40
+#define FEAT_TYPE_RSVD_INTERNAL 0x20
 	u8 featureType;
 };
 
@@ -158,9 +159,10 @@ hidpp20_print_features(int fd, u8 device_index) {
 	for (i = 0; i <= count; i++) {
 		struct feature feat;
 		if (get_featureId(fd, device_index, ifeatIndex, i, &feat)) {
-			printf(" %2i: [%04X] %c%c %s\n", i, feat.featureId,
+			printf(" %2i: [%04X] %c%c%c %s\n", i, feat.featureId,
 				feat.featureType & FEAT_TYPE_OBSOLETE ? 'O' : ' ',
 				feat.featureType & FEAT_TYPE_SWHIDDEN ? 'H' : ' ',
+				feat.featureType & FEAT_TYPE_RSVD_INTERNAL ? 'I' : ' ',
 				get_feature_name(feat.featureId));
 			if (feat.featureType & ~FEAT_TYPE_MASK) {
 				printf("Warning: unrecognized feature flags: %#04x\n",
@@ -170,5 +172,6 @@ hidpp20_print_features(int fd, u8 device_index) {
 			fprintf(stderr, "Failed to get feature, is device connected?\n");
 		}
 	}
-	puts("(O = obsolete feature; H = SW hidden feature)");
+	puts("(O = obsolete feature; H = SW hidden feature;\n"
+		" I = reserved for internal use)");
 }
