@@ -905,7 +905,7 @@ void gather_device_info(int fd, u8 device_index) {
 		get_hidpp_version(fd, device_index, &dev->hidpp_version);
 		get_device_ext_pair_info(fd, device_index);
 		get_device_name(fd, device_index);
-		if (dev->hidpp_version.major == 0 && dev->hidpp_version.minor == 0) {
+		if (dev->hidpp_version.major == 1 && dev->hidpp_version.minor == 0) {
 			if (get_device_versions(fd, device_index, &dev->version)) {
 				dev->device_available = true;
 			}
