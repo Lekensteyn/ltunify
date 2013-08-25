@@ -6,6 +6,11 @@ if [ "$USER" = "root" ]; then
 	exit 1
 fi
 
+GROUP="$(id -g)"
+if [ $GROUP = 0 ]; then
+	GROUP="$(id -g "$USER")"
+fi
+
 if [ ! -e /dev/usbmon0 ]; then
 	echo "Attempting to modprobe usbmon..."
 	sudo modprobe -v usbmon
@@ -21,7 +26,7 @@ echo Found devices: $usbmons
 
 if [ -n "$usbmons" ]; then
 	echo "Attempting to change permissions..."
-	sudo chgrp -v $USER $usbmons
+	sudo chgrp -v $GROUP $usbmons
 	sudo chmod -v g+rw $usbmons
 else
 	echo "No devices found"
