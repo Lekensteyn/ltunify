@@ -20,7 +20,7 @@ if [ ! -e /dev/usbmon0 ]; then
 	fi
 fi
 
-usbmons=$(lsusb -d046d: | cut -c7 | sed 's,^,/dev/usbmon,')
+usbmons=$(lsusb -d046d: | cut -c7 | sed 's,^,/dev/usbmon,' | sort -u)
 
 echo Found devices: $usbmons
 
