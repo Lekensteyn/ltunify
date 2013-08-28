@@ -1,0 +1,106 @@
+#!/bin/bash
+# Utilities for HID++ accesses.
+#
+# Author: Peter Wu <lekensteyn@gmail.com>
+
+hidw() {
+	local hiddev arg bytes fillchar length
+	hiddev=$1; shift
+	bytes=()
+
+	case $hiddev in
+	''|-h|--help|-?)
+		cat <<HELP
+Usage: hidw /dev/hidrawX [data]
+
+data are hexadecimal numbers in the range 0x0-0xff ('0x' prefix is
+optional). Missing bytes for HID++ messages (0x10 and 0x11) will be
+padded by zeroes unless you end with .. as in the following
+(non-meaningful) example:
+
+    hidw /dev/hidraw0 10 ff 81  ff..
+
+In this case, the message is padded with '0xff'.
+
+This function does not show replies, use the 'read-dev-usbmon' program
+instead.
+HELP
+		return 1 ;;
+	esac
+
+	if [ ! -c "$hiddev" ]; then
+		echo "$hiddev: not a block special"
+		return 1
+	fi
+
+	for arg; do
+		if [[ $arg =~ ^(0[xX])?[0-9a-fA-F]{1,2}(\.\.)?$ ]]; then
+			byte=${arg#0[Xx]}
+			byte=${byte%..}
+			[ ${#byte} = 2 ] || byte=0$byte
+			bytes+=($byte)
+
+			# extend with last byte
+			[[ $arg != *.. ]] || fillchar=$byte
+		else
+			echo "Invalid argument: $arg"
+			return 1
+		fi
+	done
+
+	case ${bytes[0]} in
+	10) length=7 ;;
+	11) length=20 ;;
+	*) echo "Unknown report type ${bytes[0]}, not padding " ;;
+	esac
+
+	if [ $length ]; then
+		[ -n "$fillchar" ] || fillchar=00
+		while [ ${#bytes[@]} -lt $length ]; do
+			bytes+=($fillchar)
+		done
+
+		if [ ${#bytes[@]} -gt $length ]; then
+			echo "Too many arguments: ${#bytes[@]} > $length"
+			return 1
+		fi
+	fi
+
+	echo "${bytes[@]}" | xxd -ps -r > "$hiddev"
+}
+
+_hidpp_main() {
+	local cmd
+	local cmds=(hidw)
+	cmd=$1; shift
+
+	for c in "${cmds[@]}"; do
+		if [[ $cmd == $c ]]; then
+			$cmd "$@"
+			return
+		fi
+	done
+
+	case $cmd in
+	''|-h|--help|-?)
+		cat <<HELP
+Usage: $0 command [command args]
+
+Available commands:
+  ${cmds[*]}
+
+You can also source this file to export those functions.
+HELP
+		;;
+	*)
+		echo "Unknown command, invoke with no arguments for help."
+		;;
+	esac
+
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+	_hidpp_main "$@"
+fi
+
+# vim: set syntax=sh:
