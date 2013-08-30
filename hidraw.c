@@ -156,12 +156,15 @@ static const char * registers[0x100] = {
 bool report_type_is_hidpp(u8 report_id) {
 	return report_id == SHORT_MSG || report_id == LONG_MSG;
 }
+bool report_type_is_dj(u8 report_id) {
+	return report_id == DJ_SHORT || report_id == DJ_LONG;
+}
 
 const char * report_type_str(u8 report_id, u8 type) {
-	const char *str;
+	const char *str = NULL;
 	if (report_type_is_hidpp(report_id))
 		str = report_types[type];
-	else
+	else if (report_type_is_dj(report_id))
 		str = dj_report_types[type];
 	return str ? str : "";
 }
