@@ -24,11 +24,16 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdbool.h>
 
 typedef unsigned char u8;
 
 #define SHORT_MSG	0x10
 #define SHORT_MSG_LEN	7
+#define DJ_SHORT	0x20
+#define DJ_SHORT_LEN	15
+#define DJ_LONG		0x21
+#define DJ_LONG_LEN	32
 #define LONG_MSG	0x11
 #define LONG_MSG_LEN	20
 
@@ -50,6 +55,7 @@ struct report {
 	};
 } __attribute__((__packed__));
 
+/* types for HID++ report IDs 0x10 and 0x11 */
 static const char * report_types[0x100] = {
 	[0x00] = "_HIDPP20", // fake type
 	// 0x00 - 0x3F HID reports
@@ -78,6 +84,28 @@ static const char * report_types[0x100] = {
 	[0x83] = "GET_LONG_REG",
 	[0x8F] = "_ERROR_MSG",
 	[0xFF] = "_HIDPP20_ERROR_MSG",
+};
+
+/* types for DJ report IDS 0x20 and 0x21 */
+static const char *dj_report_types[0x100] = {
+	/* 0x00 - 0x3F: RF reports */
+	[0x01] = "KEYBOARD",
+	[0x02] = "MOUSE",
+	[0x03] = "CONSUMER_CONTROL",
+	[0x04] = "SYSTEM_CONTROL",
+	[0x08] = "MEDIA_CENTER",
+	[0x0E] = "KEYBOARD_LEDS",
+
+	/* 0x40 - 0x7F: DJ notifications */
+	[0x40] = "NOTIF_DEVICE_UNPAIRED",
+	[0x41] = "NOTIF_DEVICE_PAIRED",
+	[0x42] = "NOTIF_CONNECTION_STATUS",
+
+	[0x7F] = "NOTIF_ERROR",
+
+	/* 0x80 - 0xFF: DJ commands */
+	[0x80] = "CMD_SWITCH_N_KEEPALIVE",
+	[0x81] = "CMD_GET_PAIRED_DEVICES"
 };
 
 static const char * error_messages[0x100] = {
@@ -125,8 +153,16 @@ static const char * registers[0x100] = {
 	[0xf1] = "VERSION_INFO?",
 };
 
-const char * report_type_str(u8 type) {
-	const char * str = report_types[type];
+bool report_type_is_hidpp(u8 report_id) {
+	return report_id == SHORT_MSG || report_id == LONG_MSG;
+}
+
+const char * report_type_str(u8 report_id, u8 type) {
+	const char *str;
+	if (report_type_is_hidpp(report_id))
+		str = report_types[type];
+	else
+		str = dj_report_types[type];
 	return str ? str : "";
 }
 const char * device_type_str(u8 type) {
@@ -160,6 +196,7 @@ void process_msg_payload(struct report *r, u8 data_len) {
 
 	pos = 0; // nothing has been processed
 
+	if (report_type_is_hidpp(r->report_id))
 	switch (r->sub_id) {
 	case 0x00: // assume HID++ 2.0 request/response for feature IRoot
 		if (data_len == 4 || data_len == 17) {
@@ -179,7 +216,7 @@ void process_msg_payload(struct report *r, u8 data_len) {
 		break;
 	case 0x8F: // error
 		// TODO: length check
-		printf("SubID=%02X %s  ", bytes[0], report_type_str(bytes[0]));
+		printf("SubID=%02X %s  ", bytes[0], report_type_str(r->report_id, bytes[0]));
 		printf("reg=%02X %s  ", bytes[1], register_str(bytes[1]));
 		printf("err=%02X %s  ", bytes[2], error_str(bytes[2]));
 		pos = 4; // everything is processed
@@ -223,6 +260,20 @@ void process_msg(struct report *report, ssize_t size) {
 			return;
 		}
 		break;
+	case DJ_SHORT:
+		report_type = "dj_s";
+		if (size != DJ_SHORT_LEN) {
+			fprintf(stderr, "Invalid DJ short msg len %zi\n", size);
+			return;
+		}
+		break;
+	case DJ_LONG:
+		report_type = "dj_l";
+		if (size != DJ_LONG_LEN) {
+			fprintf(stderr, "Invalid DJ long msg len %zi\n", size);
+			return;
+		}
+		break;
 	default:
 		report_type = "unkn";
 		//fprintf(stderr, "Unknown report ID %02x, len=%zi\n", report->report_id, size);
@@ -236,7 +287,7 @@ void process_msg(struct report *report, ssize_t size) {
 	printf("device=%02X %-4s ", report->device_index,
 			device_type_str(report->device_index));
 	printf("type=%02X %-23s ", report->sub_id,
-			report_type_str(report->sub_id));
+			report_type_str(report->report_id, report->sub_id));
 
 	if (size > 3) {
 		process_msg_payload(report, size - 3);
