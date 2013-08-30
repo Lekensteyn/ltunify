@@ -14,9 +14,9 @@ hidw() {
 Usage: hidw /dev/hidrawX [data]
 
 data are hexadecimal numbers in the range 0x0-0xff ('0x' prefix is
-optional). Missing bytes for HID++ messages (0x10 and 0x11) will be
-padded by zeroes unless you end with .. as in the following
-(non-meaningful) example:
+optional). Missing bytes for HID++ reports (0x10 and 0x11) and DJ
+reports (0x20 and 0x21) will be padded by zeroes unless you end with ..
+as in the following (non-meaningful) example:
 
     hidw /dev/hidraw0 10 ff 81  ff..
 
@@ -51,6 +51,8 @@ HELP
 	case ${bytes[0]} in
 	10) length=7 ;;
 	11) length=20 ;;
+	20) length=15 ;;
+	21) length=32 ;;
 	*) echo "Unknown report type ${bytes[0]}, not padding " ;;
 	esac
 
