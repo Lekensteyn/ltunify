@@ -414,6 +414,12 @@ static bool do_read_skippy(int fd, struct hidpp_message *msg,
 		if (msg->report_id == exp_report_id && msg->sub_id == exp_sub_id) {
 			return true;
 		}
+
+		/* ignore non-HID++ reports (e.g. DJ reports) */
+		if (msg->report_id != SHORT_MESSAGE && msg->report_id != LONG_MESSAGE) {
+			continue;
+		}
+
 		// guess: 0xFF is error message in HID++ 2.0?
 		if (msg->report_id == LONG_MESSAGE && msg->sub_id == 0xFF) {
 			if (debug_enabled) {
