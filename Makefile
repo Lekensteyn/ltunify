@@ -1,4 +1,4 @@
-override CFLAGS := -g -O2 -Wall -Wextra -D_FORTIFY_SOURCE=2 -fstack-protector --param ssp-buffer-size=4 $(CFLAGS)
+CFLAGS ?= -g -O2 -Wall -Wextra -D_FORTIFY_SOURCE=2 -fstack-protector --param ssp-buffer-size=4
 # for install-home
 BINDIR ?= $(HOME)/bin
 
