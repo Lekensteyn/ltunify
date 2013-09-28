@@ -31,6 +31,7 @@
 #include <getopt.h> /* for getopt_long */
 #include <poll.h>
 #include <libgen.h> /* for basename, used during discovery */
+#include <time.h> /* needs -lrt, for clock_gettime as timeout helper */
 
 #ifndef PACKAGE_VERSION
 #	define PACKAGE_VERSION "0.2"
@@ -40,6 +41,7 @@
 
 // pass -D option to print very verbose details like protocol communication
 static bool debug_enabled;
+#define DPRINTF(...) if (debug_enabled) { fprintf(stderr, __VA_ARGS__); }
 
 typedef unsigned char u8;
 
@@ -306,18 +308,25 @@ static void dump_msg(struct hidpp_message *msg, size_t payload_size, const char 
 	fflush(NULL);
 }
 
-static ssize_t do_io(int fd, struct hidpp_message *msg, bool is_write, int timeout) {
-        ssize_t r;
-        size_t payload_size = SHORT_MESSAGE_LEN;
+static long long unsigned get_timestamp_ms(void) {
+	struct timespec tp;
+	clock_gettime(CLOCK_MONOTONIC, &tp);
+	return tp.tv_sec * 1000 + tp.tv_nsec / 1000000;
+}
 
-        if (msg->report_id == LONG_MESSAGE) {
-                payload_size = LONG_MESSAGE_LEN;
-        }
+#include <execinfo.h>
+static ssize_t do_read(int fd, struct hidpp_message *msg, u8 expected_report_id, int timeout) {
+	ssize_t r;
+	size_t payload_size = LONG_MESSAGE_LEN;
+	long long unsigned begin_ms, end_ms;
 
-	if (is_write) {
-		dump_msg(msg, payload_size, "wr");
-		r = write(fd, msg, payload_size);
-	} else {
+	if (expected_report_id == SHORT_MESSAGE) {
+		payload_size = SHORT_MESSAGE_LEN;
+	}
+
+	begin_ms = get_timestamp_ms();
+
+	while (timeout > 0) {
 		struct pollfd pollfd;
 		pollfd.fd = fd;
 		pollfd.events = POLLIN;
@@ -327,32 +336,55 @@ static ssize_t do_io(int fd, struct hidpp_message *msg, bool is_write, int timeo
 			perror("poll");
 			return 0;
 		} else if (r == 0) {
+			DPRINTF("poll timeout reached!\n");
 			// timeout
 			return 0;
 		}
 
+		memset(msg, 0, payload_size);
 		r = read(fd, msg, payload_size);
-		if (r >= 0) {
-			int saved_errno = errno;
+		if (r < 0) {
+			perror("read");
+			return 0;
+		} else if (r > 0) {
 			dump_msg(msg, r, "rd");
-			errno = saved_errno;
+			if (msg->report_id == expected_report_id) {
+				return r;
+			} else if (expected_report_id == 0 &&
+				(msg->report_id == SHORT_MESSAGE ||
+				msg->report_id == LONG_MESSAGE)) {
+				/* HACK: ping response for HID++ 2.0 is a LONG
+				 * message, but for HID++ 1.0 it is a SHORT one. */
+				return r;
+			} else {
+				DPRINTF("Skipping unexpected report ID %#x (want %#x)\n",
+					msg->report_id, expected_report_id);
+			}
 		}
-	}
-        if ((size_t) r == payload_size
-		|| (msg->report_id == SUB_ERROR_MSG && r == SHORT_MESSAGE_LEN)) {
-		return payload_size;
+
+		/* unexpected message, try again with updated timeout */
+		end_ms = get_timestamp_ms();
+		timeout -= end_ms - begin_ms;
+		begin_ms = end_ms;
 	}
 
-	if (r < 0) {
-		perror(is_write ? "write" : "read");
-	}
+	/* timeout expired, no report found unfortunately */
 	return 0;
 }
-static ssize_t do_read(int fd, struct hidpp_message *msg, int timeout) {
-	return do_io(fd, msg, false, timeout);
-}
 static ssize_t do_write(int fd, struct hidpp_message *msg) {
-	return do_io(fd, msg, true, 0);
+	ssize_t r, payload_size = SHORT_MESSAGE_LEN;
+
+	if (msg->report_id == LONG_MESSAGE) {
+		payload_size = LONG_MESSAGE_LEN;
+	}
+
+	dump_msg(msg, payload_size, "wr");
+	r = write(fd, msg, payload_size);
+	if (r < 0) {
+		perror("write");
+	}
+
+	return payload_size == r ? payload_size : 0;
 }
 
 const char *get_report_id_str(u8 report_type) {
@@ -407,8 +439,7 @@ bool process_notif_dev_connect(struct hidpp_message *msg, u8 *device_index,
 static bool do_read_skippy(int fd, struct hidpp_message *msg,
 	u8 exp_report_id, u8 exp_sub_id) {
 	for (;;) {
-		msg->report_id = exp_report_id;
-		if (!do_read(fd, msg, 2000)) {
+		if (!do_read(fd, msg, exp_report_id, 2000)) {
 			return false;
 		}
 		if (msg->report_id == exp_report_id && msg->sub_id == exp_sub_id) {
@@ -653,8 +684,7 @@ void perform_pair(int fd, u8 timeout) {
 	puts("Please turn your wireless device off and on to start pairing.");
 	// WARNING: mess ahead. I knew it would become messy before writing it.
 	for (;;) {
-		msg.report_id = SHORT_MESSAGE;
-		if (!do_read(fd, &msg, timeout * 1000 + 2000)) {
+		if (!do_read(fd, &msg, SHORT_MESSAGE, timeout * 1000 + 2000)) {
 			fprintf(stderr, "Failed to read short message\n");
 			break;
 		}
@@ -824,7 +854,7 @@ bool get_hidpp_version(int fd, u8 device_index, struct hidpp_version *version) {
 		return false;
 	}
 	for (;;) {
-		if (!do_read(fd, &msg, 3000)) {
+		if (!do_read(fd, &msg, 0, 3000)) {
 			if (debug_enabled) {
 				fprintf(stderr, "Failed to read HID++ version, device does not respond!\n");
 			}

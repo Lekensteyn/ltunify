@@ -17,6 +17,7 @@ all: ltunify read-dev-usbmon
 read-dev-usbmon: read-dev-usbmon.c hidraw.c
 
 ltunify: ltunify.c hidpp20.c
+	$(CC) $(CFLAGS) -o $(OUTDIR)$@ $< -lrt
 
 .PHONY: all clean install-home install install-udevrule uninstall
 clean:
