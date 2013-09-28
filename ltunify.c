@@ -1010,6 +1010,13 @@ void get_device_names(int fd) {
 		}
 	}
 }
+
+static void print_version(void) {
+	fprintf(stderr,
+"Logitech Unifying tool version " PACKAGE_VERSION "\n"
+"Copyright (C) 2013 Peter Wu <lekensteyn@gmail.com>\n");
+}
+
 void print_all_devices(void) {
 	unsigned i;
 	puts("Connected devices:");
@@ -1025,9 +1032,10 @@ void print_all_devices(void) {
 }
 
 static void print_usage(const char *program_name) {
-	fprintf(stderr, "Usage: %s [options] cmd [cmd options]\n"
-"Logitech Unifying tool version %s\n"
-"Copyright (C) 2013 Peter Wu <lekensteyn@gmail.com>\n"
+	fprintf(stderr, "Usage: %s [options] cmd [cmd options]\n",
+		program_name);
+	print_version();
+	fprintf(stderr,
 "\n"
 "Generic options:\n"
 "  -d, --device path Bypass detection, specify custom hidraw device.\n"
@@ -1043,8 +1051,7 @@ static void print_usage(const char *program_name) {
 "  receiver-info   - Show information about the receiver\n"
 "In the above lines, \"idx\" refers to the device number shown in the\n"
 " first column of the list command (between 1 and 6). Alternatively, you\n"
-" can use the following names (case-insensitive):\n"
-	, program_name, PACKAGE_VERSION);
+" can use the following names (case-insensitive):\n");
 	print_device_types();
 }
 
@@ -1067,12 +1074,13 @@ static int validate_args(int argc, char **argv, char ***argsp, char **hidraw_pat
 	struct option longopts[] = {
 		{ "device",     1, NULL, 'd' },
 		{ "help",       0, NULL, 'h' },
+		{ "version",	0, NULL, 'V' },
 		{ 0, 0, 0, 0 },
 	};
 
 	*argsp = NULL;
 
-	while ((opt = getopt_long(argc, argv, "+Dd:h", longopts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+Dd:hV", longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'D':
 			debug_enabled = true;
@@ -1080,6 +1088,9 @@ static int validate_args(int argc, char **argv, char ***argsp, char **hidraw_pat
 		case 'd':
 			*hidraw_path = optarg;
 			break;
+		case 'V':
+			print_version();
+			return 0;
 		case 'h':
 			print_usage(*argv);
 			return 0;
