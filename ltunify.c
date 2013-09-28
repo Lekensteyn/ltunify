@@ -1067,6 +1067,7 @@ static int validate_args(int argc, char **argv, char ***argsp, char **hidraw_pat
 	struct option longopts[] = {
 		{ "device",     1, NULL, 'd' },
 		{ "help",       0, NULL, 'h' },
+		{ 0, 0, 0, 0 },
 	};
 
 	*argsp = NULL;
