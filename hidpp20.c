@@ -33,6 +33,7 @@ struct feature {
 static
 const char *
 get_feature_name(uint16_t featureId) {
+	/* With '?' prefix are taken from SetPointP/KEMUI.xml */
 	switch (featureId) {
 	case 0x0000: return "Root";
 	case 0x0001: return "FeatureSet";
@@ -40,28 +41,42 @@ get_feature_name(uint16_t featureId) {
 	case 0x0003: return "DeviceFwVersion";
 	case 0x0005: return "DeviceName";
 	case 0x0006: return "DeviceGroups";
-	case 0x00C0: return "Dfucontrol";
+	case 0x00C0: return "Dfucontrol";           /* Firmware Update */
 	case 0x1000: return "BatteryStatus";
+	case 0x1900: return "?SoundNotif";          /* Sound Notification */
+	case 0x1920: return "?AudioControls";       /* Audio Controls */
+	case 0x1940: return "?VOIP";                /* Internet Telephony */
+	case 0x1960: return "?VideoCalling";
+	case 0x1980: return "?Backlighting";
 	case 0x1981: return "Backlight";
 	case 0x1B00: return "ReprogControls";
 	case 0x1B01: return "ReprogControlsV2";
 	case 0x1B03: return "ReprogControlsV3";
-	case 0x1D4B: return "WirelessDeviceStatus";
+	case 0x1D4B: return "WirelessDeviceStatus"; /* Wireless Update */
+	case 0x2000: return "?MouseFeature";        /* Pointing Device Feature */
 	case 0x2001: return "LeftRightSwap";
 	case 0x2100: return "VerticalScrolling";
 	case 0x2120: return "HiResScrolling";
 	case 0x2200: return "MousePointer";
+	case 0x2510: return "?ProfileMgmt";         /* Profile Management */
+	case 0x4000: return "?KeyboardFeature";
 	case 0x40A0: return "FnInversion";
 	case 0x40A2: return "NewFnInversion";
 	case 0x4100: return "Encryption";
 	case 0x4301: return "SolarDashboard";
-	case 0x4520: return "KeyboardLayout";
-	case 0x6010: return "TouchpadFwItems";
-	case 0x6011: return "TouchpadSwItems";
+	case 0x4400: return "?DisplayFeature";
+	case 0x4520: return "KeyboardLayout";       /* Inactive key */
+	case 0x5500: return "?SliderControls";
+	case 0x6000: return "?TouchpadFeature";
+	case 0x6010: return "TouchpadFwItems";      /* Basic Touchpad settings */
+	case 0x6011: return "TouchpadSwItems";      /* Enhanced Touchpad settings */
 	case 0x6012: return "TouchpadWin8FwItems";
+	case 0x6020: return "?TouchpadTapSelect";   /* Tap to select */
+	case 0x6030: return "?DisablePointerAccel"; /* Disable pointer acceleration */
 	case 0x6100: return "TouchpadRawXy";
 	case 0x6110: return "TouchmouseRawPoints";
 	case 0x6120: return "Touchmouse6120";
+	case 0x6300: return "?HandwritingRecog";    /* Handwriting recognition" */
 	default: return "unknown";
 	}
 }
