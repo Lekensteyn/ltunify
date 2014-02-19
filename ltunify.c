@@ -1208,6 +1208,10 @@ int open_hidraw(void) {
 				"for %s\n", hiddev_name);
 		} else {
 			fprintf(stderr, "No Logitech Unifying Receiver device found\n");
+			if (access("/sys/class/hidraw", R_OK)) {
+				fputs("The kernel must have CONFIG_HIDRAW enabled.\n",
+					stderr);
+			}
 			if (access("/sys/module/hid_logitech_dj", F_OK)) {
 				fprintf(stderr, "Driver is not loaded, try:"
 						"   sudo modprobe hid-logitech-dj\n");
