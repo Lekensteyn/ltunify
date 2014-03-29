@@ -22,6 +22,9 @@ as in the following (non-meaningful) example:
 
 In this case, the message is padded with '0xff'.
 
+The data can also be interleaved with chars by starting an argument
+with a underscore (_). For example, "_foo" is equivalent to "66 6f 6f".
+
 This function does not show replies, use the 'read-dev-usbmon' program
 instead.
 HELP
@@ -34,6 +37,8 @@ HELP
 	fi
 
 	for arg; do
+		# clear the fill char, makes only sense as last argument
+		fillchar=
 		if [[ $arg =~ ^(0[xX])?[0-9a-fA-F]{1,2}(\.\.)?$ ]]; then
 			byte=${arg#0[Xx]}
 			byte=${byte%..}
@@ -42,6 +47,9 @@ HELP
 
 			# extend with last byte
 			[[ $arg != *.. ]] || fillchar=$byte
+		elif [[ $arg =~ ^_ ]]; then
+			# Literal string
+			bytes+=( $(echo -n "${arg#_}" | xxd -ps | fold -w2) )
 		else
 			echo "Invalid argument: $arg"
 			return 1
