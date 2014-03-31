@@ -4,7 +4,7 @@
 # Author: Peter Wu <lekensteyn@gmail.com>
 
 hidw() {
-	local hiddev arg bytes fillchar length
+	local hiddev arg bytes fillchar length oIFS
 	hiddev=$1; shift
 	bytes=()
 
@@ -25,6 +25,11 @@ In this case, the message is padded with '0xff'.
 The data can also be interleaved with chars by starting an argument
 with a underscore (_). For example, "_foo" is equivalent to "66 6f 6f".
 
+If only a single argument is given, the commands may be separated by
+colons. The previous hidw example is equivalent to:
+
+    hidw /dev/hidraw0 10:ff:81:ff..
+
 This function does not show replies, use the 'read-dev-usbmon' program
 instead.
 HELP
@@ -34,6 +39,12 @@ HELP
 	if [ ! -c "$hiddev" ]; then
 		echo "$hiddev: not a block special"
 		return 1
+	fi
+
+	# Support ":" as separator if there is only a single argument. This makes
+	# it easier to work with tshark output, and does not break "_:" arguments.
+	if [ $# -eq 1 ]; then
+		oIFS="$IFS"; IFS=:; set -- $*; IFS="$oIFS"
 	fi
 
 	for arg; do
