@@ -427,7 +427,7 @@ bool process_notif_dev_connect(struct hidpp_message *msg, u8 *device_index,
 	if (device_index) *device_index = dev_idx;
 	if (is_new_device) *is_new_device = !dev->device_present;
 
-	memset(&devices[dev_idx], 0, sizeof devices[dev_idx]);
+	memset(dev, 0, sizeof *dev);
 	dev->device_type = dcon->device_info & DEVCON_DEV_TYPE_MASK;
 	dev->wireless_pid = (dcon->pid_msb << 8) | dcon->pid_lsb;
 	dev->device_present = true;
