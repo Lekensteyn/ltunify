@@ -1214,7 +1214,10 @@ int open_hidraw(void) {
 				if (pid == PID_NANO_RECEIVER_2) {
 					int iface = -1;
 					if ((fp = fopen_format("/sys/class/hidraw/%s/device/../bInterfaceNumber", dev_name))) {
-						fscanf(fp, "%02x", &iface);
+						int m = fscanf(fp, "%02x", &iface);
+						if (m != 1) {
+							iface = -1;
+						}
 						fclose(fp);
 					}
 					if (iface == 0) {
