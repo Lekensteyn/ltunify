@@ -1,3 +1,15 @@
+Version 0.3 - 14 June 2020
+
+* ltunify: fix device version reporting for HID++ 1.0 devices.
+* ltunify: ignore DJ reports that resulted in messages such as "Dev conn notif
+  is expected to be short, got 0x20 instead".
+* ltunify: report some more HID++ 2.0 feature names.
+* ltunify: fix failures when another event (such as touchpad motions) occur
+  between sending the command and reading the response.
+* ltunify: fix crash on unrecognised command-line parameter.
+* ltunify: add --version option.
+* ltunify: add support for Nano Receiver c534 as used by the MK270 combo.
+
 Version 0.2 - 23 July 2013
 
 * ltunify: display HID++ version and supported HID++ 2.0 features for `info`

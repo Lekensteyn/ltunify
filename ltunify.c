@@ -35,7 +35,7 @@
 #include <stdarg.h>
 
 #ifndef PACKAGE_VERSION
-#	define PACKAGE_VERSION "0.2"
+#	define PACKAGE_VERSION "0.3"
 #endif
 
 #define ARRAY_SIZE(a) (sizeof (a) / sizeof *(a))
