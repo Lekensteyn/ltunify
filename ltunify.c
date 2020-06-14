@@ -778,11 +778,10 @@ bool get_receiver_info(int fd, struct receiver_info *rinfo) {
 	params[0] = 0x03; // undocumented
 	if (get_long_register(fd, DEVICE_RECEIVER, REG_PAIRING_INFO, params, &msg)) {
 		struct msg_receiver_info *info = (struct msg_receiver_info *) &msg.msg_long.str;
-		uint32_t *serial_numberp;
+		uint32_t serial_number;
 
-		serial_numberp = (uint32_t *) &info->serial_number;
-
-		rinfo->serial_number = ntohl(*serial_numberp);
+		memcpy(&serial_number, &info->serial_number, sizeof(serial_number));
+		rinfo->serial_number = ntohl(serial_number);
 		return true;
 	}
 	return false;
@@ -810,12 +809,11 @@ bool get_device_ext_pair_info(int fd, u8 device_index) {
 	params[0] = 0x30 | (device_index - 1); // 0x30..0x3F Unifying Device extended pairing info
 	if (get_long_register(fd, DEVICE_RECEIVER, REG_PAIRING_INFO, params, &msg)) {
 		struct msg_dev_ext_pair_info *info;
-		uint32_t *serial_numberp;
+		uint32_t serial_number;
 
 		info = (struct msg_dev_ext_pair_info *) &msg.msg_long.str;
-		serial_numberp = (uint32_t *) &info->serial_number;
-
-		dev->serial_number = ntohl(*serial_numberp);
+		memcpy(&serial_number, &info->serial_number, sizeof(serial_number));
+		dev->serial_number = ntohl(serial_number);
 		dev->power_switch_location = info->usability_info & 0x0F;
 		return true;
 	}
