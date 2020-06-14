@@ -12,6 +12,9 @@ SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c532", GOTO="un
 # "Unifying Ready" Nano receiver
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c52f", GOTO="unify_dev"
 
+# Nano receiver for devices such as the MK270 mouse and keyboard combo
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c534", GOTO="unify_dev"
+
 GOTO="not_unify_recv"
 
 LABEL="unify_dev"

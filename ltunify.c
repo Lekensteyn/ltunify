@@ -32,6 +32,7 @@
 #include <poll.h>
 #include <libgen.h> /* for basename, used during discovery */
 #include <time.h> /* needs -lrt, for clock_gettime as timeout helper */
+#include <stdarg.h>
 
 #ifndef PACKAGE_VERSION
 #	define PACKAGE_VERSION "0.2"
@@ -47,6 +48,7 @@ typedef unsigned char u8;
 
 #define VID_LOGITECH		0x046d
 #define PID_NANO_RECEIVER	0xc52f
+#define PID_NANO_RECEIVER_2	0xc534
 
 #define HEADER_SIZE		3
 #define SHORT_MESSAGE           0x10
@@ -136,6 +138,7 @@ struct msg_dev_name {
 
 struct notif_devcon {
 #define DEVCON_PROT_UNIFYING	0x04
+#define DEVCON_PROT_NANO_LITE	0x0a
 	u8 prot_type; // bits 0..2 is protocol type (4 for unifying), 3..7 is reserved
 #define DEVCON_DEV_TYPE_MASK	0x0f
 // Link status: 0 is established (in range), 1 is not established (out of range)
@@ -413,7 +416,8 @@ bool process_notif_dev_connect(struct hidpp_message *msg, u8 *device_index,
 			"%#04x instead\n", msg->report_id);
 		return false;
 	}
-	if (dcon->prot_type != DEVCON_PROT_UNIFYING) {
+	if (dcon->prot_type != DEVCON_PROT_UNIFYING &&
+	    dcon->prot_type != DEVCON_PROT_NANO_LITE) {
 		fprintf(stderr, "Unknown protocol %#04x in devcon notif\n",
 			dcon->prot_type);
 		return false;
@@ -1138,6 +1142,21 @@ static int validate_args(int argc, char **argv, char ***argsp, char **hidraw_pat
 	return args_count;
 }
 
+#ifdef __GNUC__
+static FILE *fopen_format(const char *format, ...)
+__attribute__((format(printf, 1, 2)));
+#endif
+
+static FILE *fopen_format(const char *format, ...) {
+	char buf[1024];
+	va_list ap;
+
+	va_start(ap, format);
+	vsnprintf(buf, sizeof buf, format, ap);
+	va_end(ap);
+	return fopen(buf, "r");
+}
+
 #define RECEIVER_NAME "logitech-djreceiver"
 int open_hidraw(void) {
 	int fd = -1;
@@ -1152,6 +1171,8 @@ int open_hidraw(void) {
 			char *name = matches.gl_pathv[i];
 			const char *last_comp;
 			char *dev_name;
+			FILE *fp;
+			uint32_t vid = 0, pid = 0;
 
 			r = readlink(name, buf, (sizeof buf) - 1);
 			if (r < 0) {
@@ -1166,25 +1187,46 @@ int open_hidraw(void) {
 			dev_name = name + sizeof "/sys/class/hidraw";
 			*(strchr(dev_name, '/')) = 0;
 
+			// Assume that the first match is the receiver. Devices bound to the
+			// same receiver may have the same modalias.
+			if ((fp = fopen_format("/sys/class/hidraw/%s/device/modalias", dev_name))) {
+				int m = fscanf(fp, "hid:b%*04Xg%*04Xv%08Xp%08X", &vid, &pid);
+				if (m != 2) {
+					pid = 0;
+				}
+				fclose(fp);
+			}
+			if (vid != VID_LOGITECH) {
+				continue;
+			}
+
 			if (!strcmp(last_comp, RECEIVER_NAME)) {
-				/* Logitech receiver c52b and c532 - pass */
+				/* Logitech receiver c52b and c532 - pass.
+				 *
+				 * Logitech Nano receiver c534 however has
+				 * multiple hidraw devices, but the first one is
+				 * only used for keyboard events and should be
+				 * ignored. The second one is for the mouse, and
+				 * that interface has a vendor-specific HID page
+				 * for HID++.
+				 * Parsing .../device/report_descriptor is much
+				 * more complicated, so stick with knowledge
+				 * about device-specific interfaces for now.
+				 */
+				if (pid == PID_NANO_RECEIVER_2) {
+					int iface = -1;
+					if ((fp = fopen_format("/sys/class/hidraw/%s/device/../bInterfaceNumber", dev_name))) {
+						fscanf(fp, "%02x", &iface);
+						fclose(fp);
+					}
+					if (iface == 0) {
+						/* Skip first interface. */
+						continue;
+					}
+				}
 			} else if (!strcmp(last_comp, "hid-generic")) {
 				/* need to test for older nano receiver c52f */
-				FILE *fp;
-				uint32_t vid = 0, pid = 0;
-
-				// Assume that the first match is the receiver. Devices bound to the
-				// same receiver may have the same modalias.
-				snprintf(buf, sizeof buf, "/sys/class/hidraw/%s/device/modalias", dev_name);
-				if ((fp = fopen(buf, "r"))) {
-					int m = fscanf(fp, "hid:b%*04Xg%*04Xv%08Xp%08X", &vid, &pid);
-					if (m != 2) {
-						pid = 0;
-					}
-					fclose(fp);
-				}
-
-				if (vid != VID_LOGITECH || pid != PID_NANO_RECEIVER) {
+				if (pid != PID_NANO_RECEIVER) {
 					continue;
 				}
 			} else { /* unknown driver */
